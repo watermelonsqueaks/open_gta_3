@@ -208,7 +208,7 @@
     })();
   </script>
   <!-- Touch Controls Overlay -->
-  <link rel="stylesheet" href="touch.css?v=156">
+  <link rel="stylesheet" href="touch.css?v=158">
   <style>
     html, body {
       margin: 0;
@@ -583,138 +583,117 @@
 
   <!-- Mobile Touch Controls Wrapper (Active strictly on mobile devices or ?touch=1) -->
   <div class="touch-controls-wrapper" id="touch-controls" aria-hidden="true">
-    <!-- Persistent Secondary Controls Toggle Button (Slot U: Safe Top-Right) -->
-    <button id="touch-btn-secondary" class="touch-persistent-btn" title="Secondary Actions" aria-label="Secondary Controls">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="19" r="2.2"/></svg>
-    </button>
+    <!-- 1. Background Camera Look / Drag Layer -->
+    <div id="touch-camera-layer" aria-hidden="true"></div>
 
-    <!-- Secondary Controls Drawer (Directly below U) -->
-    <div id="touch-secondary-drawer" class="touch-drawer" hidden>
-      <div class="drawer-header">
-        <span class="drawer-title">Controls &amp; Actions</span>
-        <button id="drawer-close-btn" class="drawer-close" aria-label="Close Drawer">&times;</button>
-      </div>
-      <div class="drawer-grid" id="drawer-items">
-        <button class="drawer-btn" data-drawer-action="camera" id="drawer-btn-camera" title="Change Camera View (C)">
-          <span class="drawer-icon icon-camera"></span>
-          <span class="drawer-label">Camera</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="behind" id="drawer-btn-behind" title="Look Behind">
-          <span class="drawer-icon icon-behind"></span>
-          <span class="drawer-label">Behind</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="lookLeft" id="drawer-btn-look-left" title="Look Left (Q)">
-          <span class="drawer-icon icon-look-left"></span>
-          <span class="drawer-label">Look Left</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="lookRight" id="drawer-btn-look-right" title="Look Right (E)">
-          <span class="drawer-icon icon-look-right"></span>
-          <span class="drawer-label">Look Right</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="radio" id="drawer-btn-radio" title="Change Radio Station (R)">
-          <span class="drawer-icon icon-radio"></span>
-          <span class="drawer-label">Radio</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="job" id="drawer-btn-job" title="Toggle Sub-Mission (CapsLock)">
-          <span class="drawer-icon icon-job"></span>
-          <span class="drawer-label">Sub-Mission</span>
-        </button>
-        <button class="drawer-btn" data-drawer-action="settings" id="drawer-btn-settings" title="Touch Controls Settings">
-          <span class="drawer-icon icon-settings"></span>
-          <span class="drawer-label">Settings</span>
-        </button>
-      </div>
-      <div id="drawer-settings-panel" class="drawer-settings-panel" hidden>
-        <div class="setting-row">
-          <label for="touch-scale-slider">Control Size</label>
-          <div class="setting-ctrl">
-            <input type="range" id="touch-scale-slider" min="100" max="150" step="10" value="100">
-            <span id="touch-scale-val">100%</span>
-          </div>
-        </div>
-        <div class="setting-row">
-          <label for="touch-opacity-slider">HUD Opacity</label>
-          <div class="setting-ctrl">
-            <input type="range" id="touch-opacity-slider" min="50" max="100" step="5" value="100">
-            <span id="touch-opacity-val">100%</span>
-          </div>
-        </div>
-        <div class="setting-row">
-          <label for="touch-left-handed">Left-Handed Mode</label>
-          <input type="checkbox" id="touch-left-handed">
-        </div>
-        <button id="touch-reset-btn" class="drawer-setting-btn">Reset Defaults</button>
+    <!-- 2. Floating Movement Joystick (Left Side - On Foot) -->
+    <div id="touch-joystick-zone" aria-label="Movement Area">
+      <div id="touch-joystick-base" class="touch-floating-base">
+        <div id="touch-joystick-knob" class="touch-floating-knob"></div>
       </div>
     </div>
 
-    <!-- Persistent Left Movement / Steering Pad (Slot L: Safe Bottom-Left) -->
-    <div id="touch-move" class="touch-pad-container" aria-label="Movement and Steering Pad">
-      <div class="touch-pad-base" id="touch-move-base">
-        <!-- Sprint Outer Ring Indicator (Engages at radius >= 72dp) -->
-        <div class="sprint-zone-ring" id="sprint-zone-ring">
-          <span class="sprint-zone-label">SPRINT</span>
-        </div>
-        <div class="touch-pad-knob" id="touch-move-knob"></div>
+    <!-- 3. On-Foot Action Cluster (Right Side) -->
+    <div id="touch-onfoot-cluster">
+      <!-- Attack / Punch / Shoot (large red button) -->
+      <button id="btn-attack" class="touch-btn" aria-label="Attack / Shoot">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      </button>
+
+      <!-- Jump Button -->
+      <button id="btn-jump" class="touch-btn" aria-label="Jump">
+        <svg viewBox="0 0 24 24"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+      </button>
+
+      <!-- Sprint Button -->
+      <button id="btn-sprint" class="touch-btn" aria-label="Sprint">
+        <svg viewBox="0 0 24 24"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.8h2v-3.4l1.8-.7-1.6 7.6-3.7-.8-.4 2 5.3 1.1z"/></svg>
+      </button>
+
+      <!-- Contextual Enter Vehicle Button (revealed near vehicle) -->
+      <button id="btn-enter-car" class="touch-btn" aria-label="Enter Vehicle">
+        <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg>
+      </button>
+    </div>
+
+    <!-- Quick Weapon Cycle Hitbox (Tap on top right weapon icon to cycle) -->
+    <div id="touch-weapon-cycle" title="Tap to switch weapon" aria-label="Switch Weapon"></div>
+
+    <!-- 4. Driving Cluster (Left Steering, Right Pedals & Actions) -->
+    <div id="touch-driving-cluster">
+      <!-- Steering Left / Right (Left Side) -->
+      <div id="touch-steering-group">
+        <button id="btn-steer-left" class="touch-btn btn-steer" aria-label="Steer Left">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button id="btn-steer-right" class="touch-btn btn-steer" aria-label="Steer Right">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
       </div>
-    </div>
 
-    <!-- Turret Operation Pad (Slot T: Right side, for vehicle turret seat) -->
-    <div id="touch-turret-pad" class="touch-pad-container turret-pad" hidden aria-label="Turret Aim Pad">
-      <div class="touch-pad-base" id="touch-turret-base">
-        <div class="touch-pad-knob" id="touch-turret-knob"></div>
+      <!-- Vehicle Pedals (Right Side) -->
+      <div id="touch-driving-pedals">
+        <!-- Brake / Reverse Pedal -->
+        <button id="btn-brake" class="touch-btn btn-pedal" aria-label="Brake / Reverse">
+          <svg viewBox="0 0 24 24"><path d="M7 4h10v2H7zm0 4h10v2H7zm0 4h10v2H7zm0 4h10v2H7z"/><path d="M12 21l-5-5h3v-3h4v3h3z" opacity="0.8"/></svg>
+        </button>
+        <!-- Accelerate Pedal -->
+        <button id="btn-accelerate" class="touch-btn btn-pedal" aria-label="Accelerate">
+          <svg viewBox="0 0 24 24"><path d="M7 18h10v2H7zm0-4h10v2H7zm0-4h10v2H7zm0-4h10v2H7z"/><path d="M12 3l5 5h-3v3h-4V8H7z" opacity="0.8"/></svg>
+        </button>
       </div>
-    </div>
 
-    <!-- Background Camera Look Region (Right 55% of safe screen) -->
-    <div id="touch-look" aria-hidden="true"></div>
-
-    <!-- Contextual Action Buttons Cluster (Slots R0 through R6) -->
-    <div id="touch-action-cluster" class="touch-action-cluster">
-      <!-- R0: Primary Action (Fire / Aircraft Forward) -->
-      <button id="slot-r0" class="touch-slot slot-r0 primary-action" data-slot="R0" aria-label="Fire / Primary Action"></button>
-
-      <!-- R1: Aim / Handbrake / Aircraft Backwards -->
-      <button id="slot-r1" class="touch-slot slot-r1" data-slot="R1" aria-label="Target / Handbrake"></button>
-
-      <!-- R2: Jump / Horn / Fire -->
-      <button id="slot-r2" class="touch-slot slot-r2" data-slot="R2" aria-label="Jump / Horn"></button>
-
-      <!-- R3: Enter / Exit Vehicle -->
-      <button id="slot-r3" class="touch-slot slot-r3" data-slot="R3" aria-label="Enter or Exit Vehicle"></button>
-
-      <!-- R4: Weapon Selector (Opens modal weapon overlay) -->
-      <button id="slot-r4" class="touch-slot slot-r4" data-slot="R4" aria-label="Choose Weapon"></button>
-
-      <!-- R5: Zoom In / Horn -->
-      <button id="slot-r5" class="touch-slot slot-r5" data-slot="R5" aria-label="Zoom In"></button>
-
-      <!-- R6: Zoom Out / Exit -->
-      <button id="slot-r6" class="touch-slot slot-r6" data-slot="R6" aria-label="Zoom Out"></button>
-    </div>
-
-    <!-- Modal Weapon Overlay / Wheel (Opened by Slot R4) -->
-    <div id="touch-weapon-overlay" class="touch-weapon-overlay" hidden>
-      <div class="weapon-overlay-backdrop" id="weapon-overlay-backdrop"></div>
-      <div class="weapon-overlay-card">
-        <div class="weapon-overlay-header">
-          <span class="weapon-overlay-title">Select Weapon</span>
-          <button id="weapon-close-btn" class="weapon-close-btn" aria-label="Close">&times;</button>
-        </div>
-        <div class="weapon-grid" id="weapon-grid">
-          <!-- Weapon items injected dynamically with icons and names -->
-        </div>
-        <div class="weapon-overlay-controls">
-          <button id="weapon-prev-btn" class="weapon-nav-btn">&larr; Previous</button>
-          <span id="weapon-current-name" class="weapon-active-name">Fists</span>
-          <button id="weapon-next-btn" class="weapon-nav-btn">Next &rarr;</button>
-        </div>
+      <!-- Upper Vehicle Action Row (Handbrake, Horn, Exit Car) -->
+      <div id="touch-driving-actions">
+        <!-- Horn / Siren -->
+        <button id="btn-horn" class="touch-btn btn-veh-round" aria-label="Horn / Siren">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        </button>
+        <!-- Handbrake -->
+        <button id="btn-handbrake" class="touch-btn btn-veh-round" aria-label="Handbrake">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="16" font-size="11" font-weight="900" text-anchor="middle" fill="currentColor">P</text></svg>
+        </button>
+        <!-- Exit Vehicle -->
+        <button id="btn-exit-car" class="touch-btn btn-veh-round" aria-label="Exit Vehicle">
+          <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+        </button>
       </div>
+
+      <!-- Drive-By Controls (Contextual: Only when in car with drive-by weapon) -->
+      <div id="touch-driveby-group">
+        <button id="btn-driveby-left" class="touch-btn btn-driveby" aria-label="Drive-By Shoot Left">
+          <svg viewBox="0 0 24 24"><path d="M14 7l-5 5 5 5V7z"/><circle cx="17" cy="12" r="2"/></svg>
+        </button>
+        <button id="btn-driveby-right" class="touch-btn btn-driveby" aria-label="Drive-By Shoot Right">
+          <svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/><circle cx="7" cy="12" r="2"/></svg>
+        </button>
+      </div>
+
+      <!-- Special Vehicle Controls (Sub-mission / Turret) -->
+      <div id="touch-special-group">
+        <button id="btn-sub-mission" class="touch-btn" aria-label="Sub-Mission / Mission">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        </button>
+      </div>
+      <button id="btn-turret-fire" class="touch-btn" aria-label="Fire Turret Cannon" style="display:none;">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+      </button>
     </div>
 
-    <!-- Portrait Orientation Warning Overlay (Mobile Only) -->
-    <div id="touch-orientation-warning" class="touch-orientation-warning" hidden>
-      <div class="orientation-icon">📱 ↷</div>
-      <div class="orientation-text">Please rotate your device to landscape</div>
+    <!-- 5. Portrait Orientation Warning -->
+    <div id="touch-portrait-warning">
+      <div class="portrait-icon">📱</div>
+      <div class="portrait-title">Landscape Mode Required</div>
+      <div class="portrait-desc">Please rotate your device horizontally to play GTA III with mobile controls.</div>
+    </div>
+
+    <!-- 6. Developer Debug HUD (?touchdebug=1) -->
+    <div id="touch-debug-hud">
+      <div class="debug-row"><span>State:</span><span id="dbg-state" class="debug-val">ON_FOOT</span></div>
+      <div class="debug-row"><span>Pointers:</span><span id="dbg-pointers" class="debug-val">0</span></div>
+      <div class="debug-row"><span>Joystick (X,Y):</span><span id="dbg-joy" class="debug-val">0.00, 0.00</span></div>
+      <div class="debug-row"><span>Near Car:</span><span id="dbg-near-car" class="debug-val">NO</span></div>
+      <div class="debug-row"><span>Active Actions:</span><span id="dbg-actions" class="debug-val">none</span></div>
     </div>
   </div>
   <script>
@@ -746,6 +725,6 @@
   <script src="gamepad-emulator.js?v=139"></script>
   <script src="jsdos-cloud-sdk.js?v=139"></script>
   <script src="index.js?v=139"></script>
-  <script src="game.js?v=156"></script>
+  <script src="game.js?v=158"></script>
 </body>
 </html>

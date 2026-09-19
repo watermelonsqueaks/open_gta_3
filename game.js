@@ -1,4 +1,4 @@
-const BUILD_VERSION = 156;
+const BUILD_VERSION = 158;
 const DEFAULTS_RESET_VERSION = 140;
 const ASSET_CACHE_NAME = 'gta3-assets-v2';
 const PRELOAD_CONCURRENCY = 32;
@@ -1388,6 +1388,11 @@ function prefetchFirstMissionAudio() {
 
 /* wantsTouchControls and isTouchDevice are declared at the top of game.js */
 
+/* ==========================================================================
+ * GTA III 10TH ANNIVERSARY MOBILE CONTROLS SYSTEM
+ * Authentic 2011 iOS/Android control layer for Open GTA III (re3.wasm)
+ * ========================================================================== */
+
 const TOUCH_BTN = {
   A: 0, B: 1, X: 2, Y: 3,
   LB: 4, RB: 5, LT: 6, RT: 7,
@@ -1398,54 +1403,45 @@ const TOUCH_BTN = {
 let touchEmulator = null;
 let touchPadIndex = -1;
 
+const ControlState = {
+  ON_FOOT: 'ON_FOOT',
+  DRIVING: 'DRIVING',
+  DRIVE_BY: 'DRIVE_BY',
+  SPECIAL_VEHICLE: 'SPECIAL_VEHICLE',
+  MENU: 'MENU',
+};
+
 /**
- * Unified InputManager for Open GTA III Touch Controls.
- * Tracks multiple simultaneous sources per game action with reference counting.
- * Prevents key-dropping, key-clobbering, and axis conflicts between joystick and buttons.
- * Supports all 25 game actions from the Mobile Control System Specification.
+ * MobileControlState: Tracks reference-counted input actions and translates
+ * them into KeyboardEvents, MouseEvents, and GamepadEmulator actions.
  */
-class InputManager {
+class MobileControlState {
   constructor() {
     this.actionSources = new Map();
+    this.activeActions = new Set();
+    this.joyX = 0;
+    this.joyY = 0;
+
     this.keyDefinitions = {
       forward: {
-        keys: [
-          { key: 'w', code: 'KeyW', keyCode: 87 },
-          { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }
-        ],
+        keys: [{ key: 'w', code: 'KeyW', keyCode: 87 }, { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }],
         gpBtn: TOUCH_BTN.A
       },
       reverse: {
-        keys: [
-          { key: 's', code: 'KeyS', keyCode: 83 },
-          { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }
-        ],
+        keys: [{ key: 's', code: 'KeyS', keyCode: 83 }, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }],
         gpBtn: TOUCH_BTN.X
       },
       steerLeft: {
-        keys: [
-          { key: 'a', code: 'KeyA', keyCode: 65 },
-          { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }
-        ],
+        keys: [{ key: 'a', code: 'KeyA', keyCode: 65 }, { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }],
         gpBtn: TOUCH_BTN.DPAD_LEFT
       },
       steerRight: {
-        keys: [
-          { key: 'd', code: 'KeyD', keyCode: 68 },
-          { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }
-        ],
+        keys: [{ key: 'd', code: 'KeyD', keyCode: 68 }, { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }],
         gpBtn: TOUCH_BTN.DPAD_RIGHT
       },
       attack: {
-        keys: [
-          { key: 'Control', code: 'ControlLeft', keyCode: 17 },
-          { key: '0', code: 'Numpad0', keyCode: 96 }
-        ],
+        keys: [{ key: 'Control', code: 'ControlLeft', keyCode: 17 }, { key: '0', code: 'Numpad0', keyCode: 96 }],
         gpBtn: TOUCH_BTN.B
-      },
-      target: {
-        keys: [{ key: 'Delete', code: 'Delete', keyCode: 46 }],
-        gpBtn: TOUCH_BTN.RB
       },
       jump: {
         keys: [{ key: ' ', code: 'Space', keyCode: 32 }],
@@ -1456,10 +1452,7 @@ class InputManager {
         gpBtn: TOUCH_BTN.A
       },
       enterExit: {
-        keys: [
-          { key: 'f', code: 'KeyF', keyCode: 70 },
-          { key: 'Enter', code: 'Enter', keyCode: 13 }
-        ],
+        keys: [{ key: 'f', code: 'KeyF', keyCode: 70 }, { key: 'Enter', code: 'Enter', keyCode: 13 }],
         gpBtn: TOUCH_BTN.Y
       },
       handbrake: {
@@ -1471,43 +1464,25 @@ class InputManager {
         gpBtn: TOUCH_BTN.L3
       },
       radio: {
-        keys: [
-          { key: 'r', code: 'KeyR', keyCode: 82 },
-          { key: 'Insert', code: 'Insert', keyCode: 45 }
-        ],
+        keys: [{ key: 'r', code: 'KeyR', keyCode: 82 }, { key: 'Insert', code: 'Insert', keyCode: 45 }],
         gpBtn: TOUCH_BTN.LB
       },
       job: {
-        keys: [
-          { key: 'CapsLock', code: 'CapsLock', keyCode: 20 },
-          { key: '+', code: 'NumpadAdd', keyCode: 107 }
-        ],
+        keys: [{ key: 'CapsLock', code: 'CapsLock', keyCode: 20 }, { key: '+', code: 'NumpadAdd', keyCode: 107 }],
         gpBtn: TOUCH_BTN.R3
       },
       camera: {
-        keys: [
-          { key: 'c', code: 'KeyC', keyCode: 67 },
-          { key: 'Home', code: 'Home', keyCode: 36 }
-        ],
+        keys: [{ key: 'c', code: 'KeyC', keyCode: 67 }, { key: 'Home', code: 'Home', keyCode: 36 }],
         gpBtn: TOUCH_BTN.BACK
       },
       lookLeft: {
-        keys: [
-          { key: 'q', code: 'KeyQ', keyCode: 81 },
-          { key: '4', code: 'Numpad4', keyCode: 100 }
-        ]
+        keys: [{ key: 'q', code: 'KeyQ', keyCode: 81 }, { key: '4', code: 'Numpad4', keyCode: 100 }]
       },
       lookRight: {
-        keys: [
-          { key: 'e', code: 'KeyE', keyCode: 69 },
-          { key: '2', code: 'Numpad2', keyCode: 98 }
-        ]
+        keys: [{ key: 'e', code: 'KeyE', keyCode: 69 }, { key: '2', code: 'Numpad2', keyCode: 98 }]
       },
       lookBehind: {
-        keys: [
-          { key: 'CapsLock', code: 'CapsLock', keyCode: 20 },
-          { key: '.', code: 'NumpadDecimal', keyCode: 110 }
-        ]
+        keys: [{ key: 'CapsLock', code: 'CapsLock', keyCode: 20 }, { key: '.', code: 'NumpadDecimal', keyCode: 110 }]
       },
       weaponNext: {
         keys: [{ key: 'Enter', code: 'Enter', keyCode: 13 }],
@@ -1515,30 +1490,6 @@ class InputManager {
       },
       weaponPrev: {
         keys: [{ key: '.', code: 'NumpadDecimal', keyCode: 110 }]
-      },
-      zoomIn: {
-        keys: [
-          { key: 'PageUp', code: 'PageUp', keyCode: 33 },
-          { key: 'z', code: 'KeyZ', keyCode: 90 }
-        ]
-      },
-      zoomOut: {
-        keys: [
-          { key: 'PageDown', code: 'PageDown', keyCode: 34 },
-          { key: 'x', code: 'KeyX', keyCode: 88 }
-        ]
-      },
-      turretLeft: {
-        keys: [{ key: '4', code: 'Numpad4', keyCode: 100 }]
-      },
-      turretRight: {
-        keys: [{ key: '5', code: 'Numpad5', keyCode: 101 }]
-      },
-      turretUp: {
-        keys: [{ key: '9', code: 'Numpad9', keyCode: 105 }]
-      },
-      turretDown: {
-        keys: [{ key: '6', code: 'Numpad6', keyCode: 102 }]
       },
       menu: {
         keys: [{ key: 'Escape', code: 'Escape', keyCode: 27 }],
@@ -1562,23 +1513,61 @@ class InputManager {
 
     const isActive = sources.size > 0;
     if (isActive !== wasActive) {
+      if (isActive) {
+        this.activeActions.add(actionName);
+      } else {
+        this.activeActions.delete(actionName);
+      }
       this._applyActionState(actionName, isActive);
     }
   }
 
-  releaseAll(sourceId) {
+  tap(actionName) {
+    this.set(actionName, 'tap', true);
+    setTimeout(() => this.set(actionName, 'tap', false), 50);
+  }
+
+  setJoystick(nx, ny) {
+    this.joyX = nx;
+    this.joyY = ny;
+
+    if (touchEmulator && touchPadIndex >= 0) {
+      try {
+        touchEmulator.MoveAxis(touchPadIndex, 0, nx);
+        touchEmulator.MoveAxis(touchPadIndex, 1, ny);
+      } catch (_) {}
+    }
+
+    this.set('forward', 'joy_y', ny < -0.22);
+    this.set('reverse', 'joy_y', ny > 0.22);
+    this.set('steerLeft', 'joy_x', nx < -0.22);
+    this.set('steerRight', 'joy_x', nx > 0.22);
+  }
+
+  resetJoystick() {
+    this.joyX = 0;
+    this.joyY = 0;
+    if (touchEmulator && touchPadIndex >= 0) {
+      try {
+        touchEmulator.MoveAxis(touchPadIndex, 0, 0);
+        touchEmulator.MoveAxis(touchPadIndex, 1, 0);
+      } catch (_) {}
+    }
+    this.set('forward', 'joy_y', false);
+    this.set('reverse', 'joy_y', false);
+    this.set('steerLeft', 'joy_x', false);
+    this.set('steerRight', 'joy_x', false);
+  }
+
+  releaseAll() {
+    this.resetJoystick();
     for (const [actionName, sources] of this.actionSources.entries()) {
-      if (sourceId) {
-        if (sources.has(sourceId)) {
-          this.set(actionName, sourceId, false);
-        }
-      } else {
-        if (sources.size > 0) {
-          sources.clear();
-          this._applyActionState(actionName, false);
-        }
+      if (sources.size > 0) {
+        sources.clear();
+        this._applyActionState(actionName, false);
       }
     }
+    this.activeActions.clear();
   }
 
   _applyActionState(actionName, isDown) {
@@ -1609,257 +1598,178 @@ class InputManager {
   }
 }
 
-const inputManager = new InputManager();
+const mobileControls = new MobileControlState();
 
-// Global touch state and settings
-let touchSettings = {
-  scale: 100,
-  opacity: 100,
-  leftHanded: false
-};
-
-function loadTouchSettings() {
-  try {
-    const saved = localStorage.getItem('regta3_touch_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (typeof parsed.scale === 'number') touchSettings.scale = parsed.scale;
-      if (typeof parsed.opacity === 'number') touchSettings.opacity = parsed.opacity;
-      if (typeof parsed.leftHanded === 'boolean') touchSettings.leftHanded = parsed.leftHanded;
-    }
-  } catch (_) {}
-  applyTouchSettings();
-}
-
-function saveTouchSettings() {
-  try {
-    localStorage.setItem('regta3_touch_settings', JSON.stringify(touchSettings));
-  } catch (_) {}
-  applyTouchSettings();
-}
-
-function applyTouchSettings() {
-  const root = document.documentElement;
-  root.style.setProperty('--touch-scale', (touchSettings.scale / 100).toFixed(2));
-  root.style.setProperty('--touch-hud-opacity', (touchSettings.opacity / 100).toFixed(2));
-  if (touchSettings.leftHanded) {
-    document.body.dataset.touchHand = 'left';
-  } else {
-    delete document.body.dataset.touchHand;
+/**
+ * ControlStateMachine: Manages explicit GTA III gameplay states:
+ * ON_FOOT, DRIVING, DRIVE_BY, SPECIAL_VEHICLE, MENU.
+ */
+class ControlStateMachine {
+  constructor() {
+    this.currentState = ControlState.ON_FOOT;
+    this.previousState = null;
+    this.flags = 0;
+    this.nearCar = false;
   }
-}
 
-function getTouchScale() {
-  return touchSettings.scale / 100;
-}
+  updateFromFlags(flags) {
+    this.flags = flags;
+    const isMenu = !!(flags & (1 << 0));
+    const isCutscene = !!(flags & (1 << 1));
+    const isCar = !!(flags & (1 << 2));
+    const isCarGun = !!(flags & (1 << 4));
+    const isJob = !!(flags & (1 << 5));
+    const isVehGun = !!(flags & (1 << 6));
 
-let latchedAim = false;
-let isLookHolding = false;
-let touchSlotBindings = new Map();
+    let nextState = ControlState.ON_FOOT;
 
-/* Initialize Left Movement Pad with Integrated Sprint (Slot L) */
-function initMovementPad() {
-  const container = document.getElementById('touch-move');
-  const base = document.getElementById('touch-move-base');
-  const knob = document.getElementById('touch-move-knob');
-  if (!container || !base) return;
-
-  let activePointerId = null;
-  let isSprintEngaged = false;
-
-  function updatePad(clientX, clientY) {
-    const rect = base.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = clientX - cx;
-    const dy = clientY - cy;
-    const dist = Math.hypot(dx, dy);
-
-    const scale = getTouchScale();
-    const deadzonePx = 6 * scale;
-    const maxOrdinaryPx = 48 * scale;
-    const sprintEngagePx = 72 * scale;
-    const sprintReleasePx = 60 * scale;
-
-    const maxVisualTravel = rect.width * 0.38;
-    const visualDist = Math.min(dist, rect.width * 0.48);
-    const angle = Math.atan2(dy, dx);
-    const kx = Math.cos(angle) * (visualDist / (rect.width * 0.48)) * maxVisualTravel;
-    const ky = Math.sin(angle) * (visualDist / (rect.width * 0.48)) * maxVisualTravel;
-    if (knob) knob.style.transform = `translate(${kx.toFixed(1)}px, ${ky.toFixed(1)}px)`;
-
-    if (dist < deadzonePx) {
-      inputManager.set('steerLeft', 'pad_x', false);
-      inputManager.set('steerRight', 'pad_x', false);
-      inputManager.set('forward', 'pad_y', false);
-      inputManager.set('reverse', 'pad_y', false);
-      if (touchEmulator && touchPadIndex >= 0) {
-        try {
-          touchEmulator.MoveAxis(touchPadIndex, 0, 0);
-          touchEmulator.MoveAxis(touchPadIndex, 1, 0);
-        } catch (_) {}
-      }
-      if (isSprintEngaged) {
-        isSprintEngaged = false;
-        container.classList.remove('sprint-active');
-        inputManager.set('sprint', 'pad_sprint', false);
-      }
-      return;
-    }
-
-    const normDist = Math.min(1.0, (dist - deadzonePx) / (maxOrdinaryPx - deadzonePx));
-    const nx = Math.cos(angle) * normDist;
-    const ny = Math.sin(angle) * normDist;
-
-    if (touchEmulator && touchPadIndex >= 0) {
-      try {
-        touchEmulator.MoveAxis(touchPadIndex, 0, nx);
-        touchEmulator.MoveAxis(touchPadIndex, 1, ny);
-      } catch (_) {}
-    }
-
-    const isCar = document.body.dataset.stateCar === '1';
-
-    inputManager.set('steerLeft', 'pad_x', nx < -0.22);
-    inputManager.set('steerRight', 'pad_x', nx > 0.22);
-    inputManager.set('forward', 'pad_y', ny < -0.22);
-    inputManager.set('reverse', 'pad_y', ny > 0.22);
-
-    // Integrated Sprint on Foot (Section 7, radius >= 72dp)
-    if (!isCar) {
-      if (!isSprintEngaged && dist >= sprintEngagePx) {
-        isSprintEngaged = true;
-        container.classList.add('sprint-active');
-        inputManager.set('sprint', 'pad_sprint', true);
-      } else if (isSprintEngaged && dist <= sprintReleasePx) {
-        isSprintEngaged = false;
-        container.classList.remove('sprint-active');
-        inputManager.set('sprint', 'pad_sprint', false);
+    if (isMenu || isCutscene) {
+      nextState = ControlState.MENU;
+    } else if (isCar) {
+      if (isCarGun) {
+        nextState = ControlState.DRIVE_BY;
+      } else if (isVehGun || isJob) {
+        nextState = ControlState.SPECIAL_VEHICLE;
+      } else {
+        nextState = ControlState.DRIVING;
       }
     } else {
-      if (isSprintEngaged) {
-        isSprintEngaged = false;
-        container.classList.remove('sprint-active');
-        inputManager.set('sprint', 'pad_sprint', false);
-      }
+      nextState = ControlState.ON_FOOT;
+    }
+
+    if (nextState !== this.currentState) {
+      this.transitionTo(nextState);
+    }
+
+    this.updateContextualButtons();
+  }
+
+  transitionTo(nextState) {
+    this.previousState = this.currentState;
+    this.currentState = nextState;
+
+    // Deterministic cleanup: release all held touch inputs across state transitions
+    mobileControls.releaseAll();
+
+    const rootEl = document.getElementById('touch-controls');
+    if (rootEl) {
+      rootEl.dataset.touchState = nextState;
+      rootEl.dataset.touchStateLower = nextState.toLowerCase();
+    }
+    document.body.dataset.touchState = nextState;
+    document.body.dataset.touchStateLower = nextState.toLowerCase();
+
+    if (nextState === ControlState.MENU) {
+      if (isTouchDevice) disableVirtualPointerLock();
+    } else {
+      if (isTouchDevice) enableVirtualPointerLock();
     }
   }
 
-  function resetPad() {
-    activePointerId = null;
-    isSprintEngaged = false;
-    container.classList.remove('touching', 'sprint-active');
-    if (knob) knob.style.transform = 'translate(0px, 0px)';
-    if (touchEmulator && touchPadIndex >= 0) {
-      try {
-        touchEmulator.MoveAxis(touchPadIndex, 0, 0);
-        touchEmulator.MoveAxis(touchPadIndex, 1, 0);
-      } catch (_) {}
+  setNearCar(near) {
+    if (this.nearCar !== near) {
+      this.nearCar = near;
+      this.updateContextualButtons();
     }
-    inputManager.set('steerLeft', 'pad_x', false);
-    inputManager.set('steerRight', 'pad_x', false);
-    inputManager.set('forward', 'pad_y', false);
-    inputManager.set('reverse', 'pad_y', false);
-    inputManager.set('sprint', 'pad_sprint', false);
   }
 
-  container.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (activePointerId !== null) return;
-    activePointerId = e.pointerId;
-    try { container.setPointerCapture(e.pointerId); } catch (_) {}
-    container.classList.add('touching');
-    updatePad(e.clientX, e.clientY);
-  });
-
-  container.addEventListener('pointermove', (e) => {
-    if (e.pointerId === activePointerId) {
-      e.preventDefault();
-      e.stopPropagation();
-      updatePad(e.clientX, e.clientY);
+  updateContextualButtons() {
+    const enterCarBtn = document.getElementById('btn-enter-car');
+    if (enterCarBtn) {
+      const showEnter = (this.currentState === ControlState.ON_FOOT) && this.nearCar;
+      enterCarBtn.classList.toggle('visible', showEnter);
     }
-  });
 
-  const onEnd = (e) => {
-    if (e.pointerId === activePointerId) {
-      e.preventDefault();
-      e.stopPropagation();
-      try { container.releasePointerCapture(e.pointerId); } catch (_) {}
-      resetPad();
+    const subMissionBtn = document.getElementById('btn-sub-mission');
+    if (subMissionBtn) {
+      const showJob = (this.currentState === ControlState.DRIVING || this.currentState === ControlState.SPECIAL_VEHICLE) && !!(this.flags & (1 << 5));
+      subMissionBtn.classList.toggle('visible', showJob);
     }
-  };
-  container.addEventListener('pointerup', onEnd);
-  container.addEventListener('pointercancel', onEnd);
+
+    const turretFireBtn = document.getElementById('btn-turret-fire');
+    if (turretFireBtn) {
+      const showTurret = (this.currentState === ControlState.SPECIAL_VEHICLE) && !!(this.flags & (1 << 6));
+      turretFireBtn.classList.toggle('visible', showTurret);
+    }
+  }
 }
 
-/* Initialize Turret Operation Pad (Slot T) */
-function initTurretPad() {
-  const container = document.getElementById('touch-turret-pad');
-  const base = document.getElementById('touch-turret-base');
-  const knob = document.getElementById('touch-turret-knob');
-  if (!container || !base) return;
+const controlStateMachine = new ControlStateMachine();
+
+/**
+ * Dynamic / Floating Virtual Movement Joystick (Left Thumb, On-Foot)
+ */
+function initFloatingJoystick() {
+  const zone = document.getElementById('touch-joystick-zone');
+  const base = document.getElementById('touch-joystick-base');
+  const knob = document.getElementById('touch-joystick-knob');
+  if (!zone || !base || !knob) return;
 
   let activePointerId = null;
+  let originX = 0;
+  let originY = 0;
 
-  function updateTurret(clientX, clientY) {
-    const rect = base.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = clientX - cx;
-    const dy = clientY - cy;
+  function updateJoystick(clientX, clientY) {
+    const dx = clientX - originX;
+    const dy = clientY - originY;
     const dist = Math.hypot(dx, dy);
 
-    const scale = getTouchScale();
-    const deadzonePx = 6 * scale;
-    const maxVisual = rect.width * 0.38;
-    const visualDist = Math.min(dist, rect.width * 0.48);
-    const angle = Math.atan2(dy, dx);
-    const kx = Math.cos(angle) * (visualDist / (rect.width * 0.48)) * maxVisual;
-    const ky = Math.sin(angle) * (visualDist / (rect.width * 0.48)) * maxVisual;
-    if (knob) knob.style.transform = `translate(${kx.toFixed(1)}px, ${ky.toFixed(1)}px)`;
+    const maxVisual = 45;
+    const deadzone = 8;
+    const maxRadius = 55;
 
-    if (dist < deadzonePx) {
-      inputManager.set('turretLeft', 'turret', false);
-      inputManager.set('turretRight', 'turret', false);
-      inputManager.set('turretUp', 'turret', false);
-      inputManager.set('turretDown', 'turret', false);
+    const clampedDist = Math.min(dist, maxRadius);
+    const angle = Math.atan2(dy, dx);
+
+    const kx = Math.cos(angle) * (clampedDist / maxRadius) * maxVisual;
+    const ky = Math.sin(angle) * (clampedDist / maxRadius) * maxVisual;
+    knob.style.transform = 'translate(' + kx.toFixed(1) + 'px, ' + ky.toFixed(1) + 'px)';
+
+    if (dist < deadzone) {
+      mobileControls.setJoystick(0, 0);
       return;
     }
 
-    const nx = Math.cos(angle);
-    const ny = Math.sin(angle);
-    inputManager.set('turretLeft', 'turret', nx < -0.25);
-    inputManager.set('turretRight', 'turret', nx > 0.25);
-    inputManager.set('turretUp', 'turret', ny < -0.25);
-    inputManager.set('turretDown', 'turret', ny > 0.25);
+    const norm = Math.min(1.0, (dist - deadzone) / (maxRadius - deadzone));
+    const nx = Math.cos(angle) * norm;
+    const ny = Math.sin(angle) * norm;
+    mobileControls.setJoystick(nx, ny);
   }
 
-  function resetTurret() {
+  function resetJoystick() {
     activePointerId = null;
-    container.classList.remove('touching');
-    if (knob) knob.style.transform = 'translate(0px, 0px)';
-    inputManager.set('turretLeft', 'turret', false);
-    inputManager.set('turretRight', 'turret', false);
-    inputManager.set('turretUp', 'turret', false);
-    inputManager.set('turretDown', 'turret', false);
+    zone.classList.remove('touching');
+    base.classList.remove('active');
+    knob.style.transform = 'translate(0px, 0px)';
+    mobileControls.resetJoystick();
   }
 
-  container.addEventListener('pointerdown', (e) => {
+  zone.addEventListener('pointerdown', (e) => {
+    if (controlStateMachine.currentState !== ControlState.ON_FOOT) return;
+    if (activePointerId !== null) return;
+
     e.preventDefault();
     e.stopPropagation();
-    if (activePointerId !== null) return;
+
     activePointerId = e.pointerId;
-    try { container.setPointerCapture(e.pointerId); } catch (_) {}
-    container.classList.add('touching');
-    updateTurret(e.clientX, e.clientY);
+    try { zone.setPointerCapture(e.pointerId); } catch (_) {}
+
+    originX = e.clientX;
+    originY = e.clientY;
+
+    base.style.left = originX + 'px';
+    base.style.top = originY + 'px';
+    base.classList.add('active');
+    zone.classList.add('touching');
+
+    updateJoystick(e.clientX, e.clientY);
   });
 
-  container.addEventListener('pointermove', (e) => {
+  zone.addEventListener('pointermove', (e) => {
     if (e.pointerId === activePointerId) {
       e.preventDefault();
       e.stopPropagation();
-      updateTurret(e.clientX, e.clientY);
+      updateJoystick(e.clientX, e.clientY);
     }
   });
 
@@ -1867,39 +1777,44 @@ function initTurretPad() {
     if (e.pointerId === activePointerId) {
       e.preventDefault();
       e.stopPropagation();
-      try { container.releasePointerCapture(e.pointerId); } catch (_) {}
-      resetTurret();
+      try { zone.releasePointerCapture(e.pointerId); } catch (_) {}
+      resetJoystick();
     }
   };
-  container.addEventListener('pointerup', onEnd);
-  container.addEventListener('pointercancel', onEnd);
+
+  zone.addEventListener('pointerup', onEnd);
+  zone.addEventListener('pointercancel', onEnd);
+  zone.addEventListener('lostpointercapture', onEnd);
 }
 
-/* Background Camera Dragging (Screen Background outside buttons) */
-function initTouchLook() {
-  const lookArea = document.getElementById('touch-look');
-  if (!lookArea) return;
+/**
+ * Touch Camera Orbit Drag Layer
+ * Independent touch gestures over the gameplay canvas.
+ */
+function initTouchCameraLayer() {
+  const cameraLayer = document.getElementById('touch-camera-layer');
+  if (!cameraLayer) return;
 
-  let lastX = 0, lastY = 0;
   let lookPointerId = null;
+  let lastX = 0;
+  let lastY = 0;
 
-  lookArea.addEventListener('pointerdown', (e) => {
-    // If directional look is currently being held in drawer, ignore camera drag
-    if (isLookHolding) return;
-    if (document.body.dataset.stateMenu === '1') return;
+  cameraLayer.addEventListener('pointerdown', (e) => {
+    if (controlStateMachine.currentState === ControlState.MENU) return;
+    if (lookPointerId !== null) return;
 
     e.preventDefault();
     lookPointerId = e.pointerId;
     lastX = e.clientX;
     lastY = e.clientY;
+
     enableVirtualPointerLock();
-    try { lookArea.setPointerCapture(e.pointerId); } catch (_) {}
+    try { cameraLayer.setPointerCapture(e.pointerId); } catch (_) {}
   });
 
-  lookArea.addEventListener('pointermove', (e) => {
+  cameraLayer.addEventListener('pointermove', (e) => {
     if (e.pointerId === lookPointerId) {
-      if (isLookHolding) return;
-      if (document.body.dataset.stateMenu === '1') return;
+      if (controlStateMachine.currentState === ControlState.MENU) return;
 
       e.preventDefault();
       const dx = e.clientX - lastX;
@@ -1910,9 +1825,6 @@ function initTouchLook() {
       if (dx === 0 && dy === 0) return;
       enableVirtualPointerLock();
 
-      // Sensitivity tuning:
-      // In GTA 3 PC HorizantalMouseSens is 0.0025. A multiplier of 2.0 provides
-      // smooth 1:1 rotation matching standard mobile FPS/3rd-person camera controls.
       const SENSITIVITY_X = 2.0;
       const SENSITIVITY_Y = 2.0;
       const movementX = dx * SENSITIVITY_X;
@@ -1932,551 +1844,171 @@ function initTouchLook() {
     }
   });
 
-  const stopLook = (e) => {
+  const onEnd = (e) => {
     if (e.pointerId === lookPointerId) {
-      try { lookArea.releasePointerCapture(e.pointerId); } catch (_) {}
+      try { cameraLayer.releasePointerCapture(e.pointerId); } catch (_) {}
       lookPointerId = null;
     }
   };
 
-  lookArea.addEventListener('pointerup', stopLook);
-  lookArea.addEventListener('pointercancel', stopLook);
+  cameraLayer.addEventListener('pointerup', onEnd);
+  cameraLayer.addEventListener('pointercancel', onEnd);
+  cameraLayer.addEventListener('lostpointercapture', onEnd);
 }
 
-/* Contextual Slots Manager (Slots R0 through R6) */
-function initContextualSlots() {
-  const slotNames = ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6'];
-  for (const slotId of slotNames) {
-    const el = document.getElementById('slot-' + slotId.toLowerCase());
-    if (!el) continue;
+/**
+ * Robust Multi-Touch Button Binder
+ * Ensures each control captures and releases its own pointer ID independently.
+ */
+function bindTouchButton(elementId, actionName, multiActionMap) {
+  const btn = document.getElementById(elementId);
+  if (!btn) return;
 
-    let activePointerId = null;
-    let slotAction = null;
+  let activePointerId = null;
 
-    const press = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (activePointerId !== null) return;
-      if (el.classList.contains('slot-hidden')) return;
-
-      activePointerId = e.pointerId !== undefined ? e.pointerId : 'touch';
-      try {
-        if (el.setPointerCapture && e.pointerId !== undefined) {
-          el.setPointerCapture(e.pointerId);
-        }
-      } catch (_) {}
-      el.classList.add('active');
-
-      slotAction = el.dataset.action;
-      if (!slotAction) return;
-
-      // Special handling for Aim Toggle (Slot R1 on foot)
-      if (slotAction === 'target_toggle') {
-        latchedAim = !latchedAim;
-        el.classList.toggle('latched-aim', latchedAim);
-        inputManager.set('target', 'aim_latch', latchedAim);
-        updateContextualSlots();
-        return;
-      }
-
-      // Special handling for Weapon Selector (Slot R4 on foot)
-      if (slotAction === 'open_weapon_overlay') {
-        openWeaponOverlay();
-        return;
-      }
-
-      inputManager.set(slotAction, 'slot_' + slotId, true);
-    };
-
-    const release = (e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) {
-          return;
-        }
-      }
-      if (activePointerId !== null) {
-        try {
-          if (el.releasePointerCapture && e && e.pointerId !== undefined) {
-            el.releasePointerCapture(e.pointerId);
-          }
-        } catch (_) {}
-        activePointerId = null;
-        el.classList.remove('active');
-
-        if (slotAction && slotAction !== 'target_toggle' && slotAction !== 'open_weapon_overlay') {
-          inputManager.set(slotAction, 'slot_' + slotId, false);
-        }
-      }
-    };
-
-    el.addEventListener('pointerdown', press);
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointercancel', release);
-
-    touchSlotBindings.set(slotId, {
-      el,
-      release: () => {
-        if (activePointerId !== null) {
-          activePointerId = null;
-          el.classList.remove('active');
-          if (slotAction && slotAction !== 'target_toggle' && slotAction !== 'open_weapon_overlay') {
-            inputManager.set(slotAction, 'slot_' + slotId, false);
-          }
-        }
-      }
-    });
-  }
-}
-
-function configureSlot(slotId, actionName, iconClass, labelText, isVisible) {
-  const binding = touchSlotBindings.get(slotId);
-  if (!binding) return;
-  const el = binding.el;
-
-  if (!isVisible) {
-    if (!el.classList.contains('slot-hidden')) {
-      binding.release();
-      el.classList.add('slot-hidden');
-    }
-    return;
-  }
-
-  // Remove old icon classes
-  const iconClasses = [
-    'slot-action-fire', 'slot-action-aim', 'slot-action-jump',
-    'slot-action-enter', 'slot-action-exit', 'slot-action-weapon',
-    'slot-action-handbrake', 'slot-action-horn', 'slot-action-zoomin',
-    'slot-action-zoomout', 'slot-action-forward', 'slot-action-backwards'
-  ];
-  el.classList.remove(...iconClasses);
-  el.classList.remove('slot-hidden');
-
-  if (iconClass) el.classList.add(iconClass);
-  el.dataset.action = actionName;
-  el.title = labelText || '';
-  el.setAttribute('aria-label', labelText || '');
-}
-
-/* Update Contextual Action Slots based on authoritative game state */
-function updateContextualSlots() {
-  const ds = document.body.dataset;
-  const isMenu = ds.stateMenu === '1';
-  const isCutscene = ds.stateCutscene === '1';
-  const isDownload = ds.stateDownload === '1';
-  const isCar = ds.stateCar === '1';
-  const isGun = ds.stateGun === '1';
-  const isCarGun = ds.stateCarGun === '1';
-  const isVehGun = ds.stateVehGun === '1';
-
-  // Suspended Input (Menu, Cutscene, Download): hide all slots
-  if (isMenu || isCutscene || isDownload) {
-    for (const [_, binding] of touchSlotBindings.entries()) {
-      binding.release();
-      binding.el.classList.add('slot-hidden');
-    }
-    document.getElementById('touch-move')?.classList.add('slot-hidden');
-    document.getElementById('touch-turret-pad')?.setAttribute('hidden', '');
-    return;
-  }
-
-  document.getElementById('touch-move')?.classList.remove('slot-hidden');
-
-  if (isCar) {
-    // Clear foot aim latch when entering vehicle
-    if (latchedAim) {
-      latchedAim = false;
-      inputManager.set('target', 'aim_latch', false);
-    }
-
-    if (isVehGun) {
-      // Turret Vehicle State
-      document.getElementById('touch-turret-pad')?.removeAttribute('hidden');
-      configureSlot('R0', null, null, null, false);
-      configureSlot('R1', null, null, null, false);
-      configureSlot('R2', 'attack', 'slot-action-fire', 'Fire Turret', true);
-      configureSlot('R3', 'handbrake', 'slot-action-handbrake', 'Handbrake', true);
-      configureSlot('R4', null, null, null, false);
-      configureSlot('R5', 'horn', 'slot-action-horn', 'Horn', true);
-      configureSlot('R6', 'enterExit', 'slot-action-exit', 'Exit Vehicle', true);
-    } else {
-      // Normal Ground Vehicle State
-      document.getElementById('touch-turret-pad')?.setAttribute('hidden', '');
-      configureSlot('R0', 'attack', 'slot-action-fire', 'Drive-By Fire', isCarGun);
-      configureSlot('R1', 'handbrake', 'slot-action-handbrake', 'Handbrake', true);
-      configureSlot('R2', 'horn', 'slot-action-horn', 'Horn / Siren', true);
-      configureSlot('R3', 'enterExit', 'slot-action-exit', 'Exit Vehicle', true);
-      configureSlot('R4', null, null, null, false);
-      configureSlot('R5', null, null, null, false);
-      configureSlot('R6', null, null, null, false);
-    }
-  } else {
-    // On-Foot State
-    document.getElementById('touch-turret-pad')?.setAttribute('hidden', '');
-
-    // Slot R0: Fire (if weapon equipped / attack capable)
-    configureSlot('R0', 'attack', 'slot-action-fire', 'Attack / Fire', isGun);
-
-    // Slot R1: Target Lock (Aim toggle)
-    configureSlot('R1', 'target_toggle', 'slot-action-aim', 'Aim / Target', isGun);
-    const r1El = document.getElementById('slot-r1');
-    if (r1El) r1El.classList.toggle('latched-aim', latchedAim && isGun);
-
-    // Slot R2: Jump
-    configureSlot('R2', 'jump', 'slot-action-jump', 'Jump', true);
-
-    // Slot R3: Enter Vehicle
-    configureSlot('R3', 'enterExit', 'slot-action-enter', 'Enter Vehicle', true);
-
-    // Slot R4: Weapon Selector Overlay
-    configureSlot('R4', 'open_weapon_overlay', 'slot-action-weapon', 'Choose Weapon', true);
-
-    // Slots R5 & R6: Zoom In & Zoom Out (only visible while latched aiming)
-    if (latchedAim && isGun) {
-      configureSlot('R5', 'zoomIn', 'slot-action-zoomin', 'Zoom In', true);
-      configureSlot('R6', 'zoomOut', 'slot-action-zoomout', 'Zoom Out', true);
-    } else {
-      configureSlot('R5', null, null, null, false);
-      configureSlot('R6', null, null, null, false);
-    }
-  }
-}
-
-/* Secondary Controls Drawer (Slot U & Drawer) */
-function initSecondaryDrawer() {
-  const toggleBtn = document.getElementById('touch-btn-secondary');
-  const drawer = document.getElementById('touch-secondary-drawer');
-  const closeBtn = document.getElementById('drawer-close-btn');
-  const settingsBtn = document.getElementById('drawer-btn-settings');
-  const settingsPanel = document.getElementById('drawer-settings-panel');
-  if (!toggleBtn || !drawer) return;
-
-  function openDrawer() {
-    drawer.removeAttribute('hidden');
-    toggleBtn.classList.add('active');
-  }
-
-  function closeDrawer() {
-    drawer.setAttribute('hidden', '');
-    toggleBtn.classList.remove('active');
-    // Release any held look actions upon closing drawer
-    if (isLookHolding) {
-      isLookHolding = false;
-      inputManager.set('lookLeft', 'drawer_look', false);
-      inputManager.set('lookRight', 'drawer_look', false);
-      inputManager.set('lookLeft', 'drawer_behind', false);
-      inputManager.set('lookRight', 'drawer_behind', false);
-    }
-  }
-
-  toggleBtn.addEventListener('click', (e) => {
+  const onDown = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (drawer.hasAttribute('hidden')) openDrawer();
-    else closeDrawer();
-  });
+    if (activePointerId !== null) return;
 
-  if (closeBtn) {
-    closeBtn.addEventListener('click', (e) => {
+    activePointerId = e.pointerId;
+    try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+    btn.classList.add('active');
+
+    if (multiActionMap) {
+      for (const act of multiActionMap) {
+        mobileControls.set(act, elementId, true);
+      }
+    } else if (actionName) {
+      mobileControls.set(actionName, elementId, true);
+    }
+  };
+
+  const onUp = (e) => {
+    if (e.pointerId === activePointerId) {
       e.preventDefault();
       e.stopPropagation();
-      closeDrawer();
-    });
-  }
+      try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
+      activePointerId = null;
+      btn.classList.remove('active');
 
-  // Tap outside drawer to close
-  window.addEventListener('pointerdown', (e) => {
-    if (!drawer.hasAttribute('hidden')) {
-      if (!drawer.contains(e.target) && !toggleBtn.contains(e.target)) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeDrawer();
+      if (multiActionMap) {
+        for (const act of multiActionMap) {
+          mobileControls.set(act, elementId, false);
+        }
+      } else if (actionName) {
+        mobileControls.set(actionName, elementId, false);
       }
     }
-  }, true);
+  };
 
-  // Drawer Buttons
-  const btnCamera = document.getElementById('drawer-btn-camera');
-  if (btnCamera) {
-    btnCamera.addEventListener('click', (e) => {
-      e.preventDefault();
-      inputManager.set('camera', 'drawer_camera', true);
-      setTimeout(() => inputManager.set('camera', 'drawer_camera', false), 80);
-    });
-  }
-
-  // Look Behind: Atomic combo of Look Left + Look Right
-  const btnBehind = document.getElementById('drawer-btn-behind');
-  if (btnBehind) {
-    const startBehind = (e) => {
-      e.preventDefault();
-      isLookHolding = true;
-      btnBehind.classList.add('active');
-      inputManager.set('lookLeft', 'drawer_behind', true);
-      inputManager.set('lookRight', 'drawer_behind', true);
-    };
-    const stopBehind = (e) => {
-      e.preventDefault();
-      isLookHolding = false;
-      btnBehind.classList.remove('active');
-      inputManager.set('lookLeft', 'drawer_behind', false);
-      inputManager.set('lookRight', 'drawer_behind', false);
-    };
-    btnBehind.addEventListener('pointerdown', startBehind);
-    btnBehind.addEventListener('pointerup', stopBehind);
-    btnBehind.addEventListener('pointercancel', stopBehind);
-  }
-
-  // Look Left
-  const btnLookLeft = document.getElementById('drawer-btn-look-left');
-  if (btnLookLeft) {
-    const startLL = (e) => {
-      e.preventDefault();
-      isLookHolding = true;
-      btnLookLeft.classList.add('active');
-      inputManager.set('lookLeft', 'drawer_look', true);
-    };
-    const stopLL = (e) => {
-      e.preventDefault();
-      isLookHolding = false;
-      btnLookLeft.classList.remove('active');
-      inputManager.set('lookLeft', 'drawer_look', false);
-    };
-    btnLookLeft.addEventListener('pointerdown', startLL);
-    btnLookLeft.addEventListener('pointerup', stopLL);
-    btnLookLeft.addEventListener('pointercancel', stopLL);
-  }
-
-  // Look Right
-  const btnLookRight = document.getElementById('drawer-btn-look-right');
-  if (btnLookRight) {
-    const startLR = (e) => {
-      e.preventDefault();
-      isLookHolding = true;
-      btnLookRight.classList.add('active');
-      inputManager.set('lookRight', 'drawer_look', true);
-    };
-    const stopLR = (e) => {
-      e.preventDefault();
-      isLookHolding = false;
-      btnLookRight.classList.remove('active');
-      inputManager.set('lookRight', 'drawer_look', false);
-    };
-    btnLookRight.addEventListener('pointerdown', startLR);
-    btnLookRight.addEventListener('pointerup', stopLR);
-    btnLookRight.addEventListener('pointercancel', stopLR);
-  }
-
-  // Radio
-  const btnRadio = document.getElementById('drawer-btn-radio');
-  if (btnRadio) {
-    btnRadio.addEventListener('click', (e) => {
-      e.preventDefault();
-      inputManager.set('radio', 'drawer_radio', true);
-      setTimeout(() => inputManager.set('radio', 'drawer_radio', false), 80);
-    });
-  }
-
-  // Sub-Mission (Job)
-  const btnJob = document.getElementById('drawer-btn-job');
-  if (btnJob) {
-    btnJob.addEventListener('click', (e) => {
-      e.preventDefault();
-      inputManager.set('job', 'drawer_job', true);
-      setTimeout(() => inputManager.set('job', 'drawer_job', false), 80);
-    });
-  }
-
-  // Settings Panel Toggle
-  if (settingsBtn && settingsPanel) {
-    settingsBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (settingsPanel.hasAttribute('hidden')) settingsPanel.removeAttribute('hidden');
-      else settingsPanel.setAttribute('hidden', '');
-    });
-
-    const scaleSlider = document.getElementById('touch-scale-slider');
-    const scaleVal = document.getElementById('touch-scale-val');
-    if (scaleSlider && scaleVal) {
-      scaleSlider.value = touchSettings.scale;
-      scaleVal.textContent = touchSettings.scale + '%';
-      scaleSlider.addEventListener('input', () => {
-        touchSettings.scale = parseInt(scaleSlider.value, 10);
-        scaleVal.textContent = touchSettings.scale + '%';
-        saveTouchSettings();
-      });
-    }
-
-    const opacitySlider = document.getElementById('touch-opacity-slider');
-    const opacityVal = document.getElementById('touch-opacity-val');
-    if (opacitySlider && opacityVal) {
-      opacitySlider.value = touchSettings.opacity;
-      opacityVal.textContent = touchSettings.opacity + '%';
-      opacitySlider.addEventListener('input', () => {
-        touchSettings.opacity = parseInt(opacitySlider.value, 10);
-        opacityVal.textContent = touchSettings.opacity + '%';
-        saveTouchSettings();
-      });
-    }
-
-    const leftHandedCb = document.getElementById('touch-left-handed');
-    if (leftHandedCb) {
-      leftHandedCb.checked = touchSettings.leftHanded;
-      leftHandedCb.addEventListener('change', () => {
-        touchSettings.leftHanded = leftHandedCb.checked;
-        saveTouchSettings();
-      });
-    }
-
-    const resetBtn = document.getElementById('touch-reset-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        touchSettings = { scale: 100, opacity: 100, leftHanded: false };
-        if (scaleSlider) scaleSlider.value = 100;
-        if (scaleVal) scaleVal.textContent = '100%';
-        if (opacitySlider) opacitySlider.value = 100;
-        if (opacityVal) opacityVal.textContent = '100%';
-        if (leftHandedCb) leftHandedCb.checked = false;
-        saveTouchSettings();
-      });
-    }
-  }
+  btn.addEventListener('pointerdown', onDown);
+  btn.addEventListener('pointerup', onUp);
+  btn.addEventListener('pointercancel', onUp);
+  btn.addEventListener('lostpointercapture', onUp);
 }
 
-/* Modal Weapon Selection Overlay (Section 8, 17) */
-const GTA3_WEAPONS = [
-  { id: 0, name: 'Fists', icon: '👊' },
-  { id: 1, name: 'Bat', icon: '🏏' },
-  { id: 2, name: 'Pistol', icon: '🔫' },
-  { id: 3, name: 'Micro SMG', icon: '⚡' },
-  { id: 4, name: 'Shotgun', icon: '💥' },
-  { id: 5, name: 'AK-47', icon: '🎯' },
-  { id: 6, name: 'M16', icon: '🎖️' },
-  { id: 7, name: 'Sniper', icon: '🔭' },
-  { id: 8, name: 'RPG', icon: '🚀' },
-  { id: 9, name: 'Flamer', icon: '🔥' },
-  { id: 10, name: 'Molotov', icon: '🍾' },
-  { id: 11, name: 'Grenade', icon: '💣' }
-];
-
-let selectedWeaponIndex = 0;
-
-function openWeaponOverlay() {
-  const overlay = document.getElementById('touch-weapon-overlay');
-  if (!overlay) return;
-
-  // Release all gameplay touch actions and targeting latch
-  inputManager.releaseAll();
-  if (latchedAim) {
-    latchedAim = false;
-    inputManager.set('target', 'aim_latch', false);
-    updateContextualSlots();
-  }
-
-  overlay.removeAttribute('hidden');
-}
-
-function closeWeaponOverlay() {
-  const overlay = document.getElementById('touch-weapon-overlay');
-  if (overlay) overlay.setAttribute('hidden', '');
-}
-
-function initWeaponOverlay() {
-  const overlay = document.getElementById('touch-weapon-overlay');
-  const grid = document.getElementById('weapon-grid');
-  const closeBtn = document.getElementById('weapon-close-btn');
-  const backdrop = document.getElementById('weapon-overlay-backdrop');
-  const prevBtn = document.getElementById('weapon-prev-btn');
-  const nextBtn = document.getElementById('weapon-next-btn');
-  const activeName = document.getElementById('weapon-current-name');
-  if (!overlay || !grid) return;
-
-  grid.innerHTML = '';
-  GTA3_WEAPONS.forEach((wpn, idx) => {
-    const btn = document.createElement('button');
-    btn.className = 'weapon-sector-btn' + (idx === selectedWeaponIndex ? ' selected' : '');
-    btn.innerHTML = `<span class=\"weapon-sector-icon\">${wpn.icon}</span><span class=\"weapon-sector-name\">${wpn.name}</span>`;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectedWeaponIndex = idx;
-      grid.querySelectorAll('.weapon-sector-btn').forEach((b, i) => {
-        b.classList.toggle('selected', i === idx);
-      });
-      if (activeName) activeName.textContent = wpn.name;
-
-      // Send weapon switch request
-      inputManager.set('weaponNext', 'overlay_sel', true);
-      setTimeout(() => inputManager.set('weaponNext', 'overlay_sel', false), 80);
-      closeWeaponOverlay();
-    });
-    grid.appendChild(btn);
-  });
-
-  if (closeBtn) closeBtn.addEventListener('click', closeWeaponOverlay);
-  if (backdrop) backdrop.addEventListener('click', closeWeaponOverlay);
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectedWeaponIndex = (selectedWeaponIndex - 1 + GTA3_WEAPONS.length) % GTA3_WEAPONS.length;
-      grid.querySelectorAll('.weapon-sector-btn').forEach((b, i) => {
-        b.classList.toggle('selected', i === selectedWeaponIndex);
-      });
-      if (activeName) activeName.textContent = GTA3_WEAPONS[selectedWeaponIndex].name;
-      inputManager.set('weaponPrev', 'overlay_prev', true);
-      setTimeout(() => inputManager.set('weaponPrev', 'overlay_prev', false), 80);
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectedWeaponIndex = (selectedWeaponIndex + 1) % GTA3_WEAPONS.length;
-      grid.querySelectorAll('.weapon-sector-btn').forEach((b, i) => {
-        b.classList.toggle('selected', i === selectedWeaponIndex);
-      });
-      if (activeName) activeName.textContent = GTA3_WEAPONS[selectedWeaponIndex].name;
-      inputManager.set('weaponNext', 'overlay_next', true);
-      setTimeout(() => inputManager.set('weaponNext', 'overlay_next', false), 80);
-    });
-  }
-}
-
-/* Master Touch Controller Installer */
-function installTouchControls() {
-  if (!isTouchDevice) {
-    document.body.dataset.isTouch = '0';
-    console.log('[regta3] PC browser mode active — touch controls completely disabled');
-    return;
-  }
-
-  document.body.dataset.isTouch = '1';
-  loadTouchSettings();
-
-  if (typeof GamepadEmulator === 'function' && !touchEmulator) {
-    try {
-      touchEmulator = new GamepadEmulator();
-      const pad = touchEmulator.AddEmulatedGamepad(null, true);
-      if (pad) touchPadIndex = pad.index;
-    } catch (err) {
-      console.warn('[regta3] GamepadEmulator:', err && err.message ? err.message : err);
+/**
+ * Memory-based Vehicle Proximity Detection
+ * Inspects CWorld::Players and CVehiclePool in WASM memory.
+ */
+function checkNearbyVehicle() {
+  try {
+    if (!window.wasmMemory) {
+      if (typeof HEAP32 !== 'undefined') window.wasmMemory = HEAP32.buffer;
+      else if (window.wasmInstance && window.wasmInstance.exports.kg) window.wasmMemory = window.wasmInstance.exports.kg.buffer;
+      else if (window.wasmInstance && window.wasmInstance.exports.memory) window.wasmMemory = window.wasmInstance.exports.memory.buffer;
     }
-  }
+    if (!window.wasmMemory) return false;
+    const h32 = new Int32Array(window.wasmMemory);
+    const hf32 = new Float32Array(window.wasmMemory);
 
-  initMovementPad();
-  initTurretPad();
-  initTouchLook();
-  initContextualSlots();
-  initSecondaryDrawer();
-  initWeaponOverlay();
-  updateContextualSlots();
+    const pPlayerPed = h32[0x1b33aa8 >> 2];
+    if (!pPlayerPed || pPlayerPed <= 0) return false;
 
-  console.log('[regta3] Mobile Control System initialized successfully per specification');
+    // Check if player is already inside a vehicle (CPed::m_pMyVehicle at offset 784 = 0x310)
+    const inVehicle = h32[(pPlayerPed + 784) >> 2];
+    if (inVehicle && inVehicle > 0) return false;
+
+    const px = hf32[(pPlayerPed + 48) >> 2];
+    const py = hf32[(pPlayerPed + 52) >> 2];
+    const pz = hf32[(pPlayerPed + 56) >> 2];
+
+    if (isNaN(px) || isNaN(py) || (px === 0 && py === 0)) return false;
+
+    const pVehPool = h32[0x1a99f74 >> 2];
+    if (pVehPool && pVehPool > 0) {
+      let objectsPtr = h32[(pVehPool + 4) >> 2];
+      if (!objectsPtr || objectsPtr < 0x1000) objectsPtr = pVehPool;
+      const poolSize = 110;
+      const stride = 2072;
+
+      for (let i = 0; i < poolSize; i++) {
+        const vehPtr = objectsPtr + (i * stride);
+        if (vehPtr + 60 >= hf32.byteLength) break;
+        const vx = hf32[(vehPtr + 48) >> 2];
+        const vy = hf32[(vehPtr + 52) >> 2];
+        const vz = hf32[(vehPtr + 56) >> 2];
+
+        if (isNaN(vx) || (vx === 0 && vy === 0)) continue;
+
+        const dx = px - vx;
+        const dy = py - vy;
+        const dz = pz - vz;
+        const distSq = dx * dx + dy * dy + dz * dz;
+
+        // 6.5 meters vehicle carjacking entry radius
+        if (distSq < 42.25) {
+          return true;
+        }
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
+let proximityInterval = null;
+function startProximityLoop() {
+  if (proximityInterval) clearInterval(proximityInterval);
+  proximityInterval = setInterval(() => {
+    if (controlStateMachine.currentState === ControlState.ON_FOOT) {
+      const isNear = checkNearbyVehicle();
+      controlStateMachine.setNearCar(isNear);
+    }
+  }, 150);
+}
+
+const activeTouchPointers = new Set();
+window.addEventListener('pointerdown', (e) => activeTouchPointers.add(e.pointerId), true);
+window.addEventListener('pointerup', (e) => activeTouchPointers.delete(e.pointerId), true);
+window.addEventListener('pointercancel', (e) => activeTouchPointers.delete(e.pointerId), true);
+
+/**
+ * Developer Debug HUD (?touchdebug=1)
+ */
+function initTouchDebugHud() {
+  const hasTouchDebug = new URLSearchParams(window.location.search).get('touchdebug') === '1';
+  if (!hasTouchDebug) return;
+
+  const hud = document.getElementById('touch-debug-hud');
+  if (hud) hud.classList.add('visible');
+
+  setInterval(() => {
+    const dbgState = document.getElementById('dbg-state');
+    const dbgPointers = document.getElementById('dbg-pointers');
+    const dbgJoy = document.getElementById('dbg-joy');
+    const dbgNear = document.getElementById('dbg-near-car');
+    const dbgActions = document.getElementById('dbg-actions');
+
+    if (dbgState) dbgState.textContent = controlStateMachine.currentState;
+    if (dbgPointers) dbgPointers.textContent = activeTouchPointers.size;
+    if (dbgJoy) dbgJoy.textContent = mobileControls.joyX.toFixed(2) + ', ' + mobileControls.joyY.toFixed(2);
+    if (dbgNear) dbgNear.textContent = controlStateMachine.nearCar ? 'YES' : 'NO';
+    if (dbgActions) {
+      const actArr = Array.from(mobileControls.activeActions);
+      dbgActions.textContent = actArr.length > 0 ? actArr.join(', ') : 'none';
+    }
+  }, 100);
 }
 
 /* Authoritative C++ Game State Bitmask Handler */
@@ -2494,30 +2026,101 @@ function setTouchState(flags) {
   if (flags & (1 << 0)) {
     mainMenuLoaded = true;
     hideEngineStartingSpinner();
-    if (isTouchDevice) disableVirtualPointerLock();
-  } else {
-    if (isTouchDevice) enableVirtualPointerLock();
   }
+
   const ds = document.body.dataset;
-  let changed = false;
   for (const [bit, name] of TOUCH_STATE_BITS) {
-    const want = (flags & bit) ? '1' : '0';
-    if (ds[name] !== want) {
-      ds[name] = want;
-      changed = true;
-    }
+    ds[name] = (flags & bit) ? '1' : '0';
   }
-  if (changed) {
-    updateContextualSlots();
-  }
+
+  controlStateMachine.updateFromFlags(flags);
 }
 
 function setTouchDownloadState(on) {
-  const want = on ? '1' : '0';
-  if (document.body.dataset.stateDownload !== want) {
-    document.body.dataset.stateDownload = want;
-    updateContextualSlots();
+  document.body.dataset.stateDownload = on ? '1' : '0';
+}
+
+/**
+ * Master Touch Controller Installer
+ */
+function installTouchControls() {
+  if (!isTouchDevice) {
+    document.body.dataset.isTouch = '0';
+    console.log('[regta3] PC browser mode active — touch controls completely disabled');
+    return;
   }
+
+  document.body.dataset.isTouch = '1';
+
+  if (typeof GamepadEmulator === 'function' && !touchEmulator) {
+    try {
+      touchEmulator = new GamepadEmulator();
+      const pad = touchEmulator.AddEmulatedGamepad(null, true);
+      if (pad) touchPadIndex = pad.index;
+    } catch (err) {
+      console.warn('[regta3] GamepadEmulator:', err && err.message ? err.message : err);
+    }
+  }
+
+  initFloatingJoystick();
+  initTouchCameraLayer();
+
+  // On foot action buttons
+  bindTouchButton('btn-attack', 'attack');
+  bindTouchButton('btn-jump', 'jump');
+  bindTouchButton('btn-sprint', 'sprint');
+  bindTouchButton('btn-enter-car', 'enterExit');
+
+  // Driving controls
+  bindTouchButton('btn-steer-left', 'steerLeft');
+  bindTouchButton('btn-steer-right', 'steerRight');
+  bindTouchButton('btn-accelerate', 'forward');
+  bindTouchButton('btn-brake', 'reverse');
+  bindTouchButton('btn-handbrake', 'handbrake');
+  bindTouchButton('btn-horn', 'horn');
+  bindTouchButton('btn-exit-car', 'enterExit');
+
+  // Contextual Drive-by controls
+  bindTouchButton('btn-driveby-left', null, ['lookLeft', 'attack']);
+  bindTouchButton('btn-driveby-right', null, ['lookRight', 'attack']);
+
+  // Contextual Special Vehicle controls
+  bindTouchButton('btn-sub-mission', 'job');
+  bindTouchButton('btn-turret-fire', 'attack');
+
+  // Contextual Weapon Cycle Tap Zone (Top right HUD)
+  const wpZone = document.getElementById('touch-weapon-cycle');
+  if (wpZone) {
+    wpZone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      mobileControls.tap('weaponNext');
+    });
+  }
+
+  startProximityLoop();
+  initTouchDebugHud();
+  controlStateMachine.transitionTo(ControlState.ON_FOOT);
+
+  // Safety cleanup: release all touch controls when window loses focus
+  window.addEventListener('blur', () => mobileControls.releaseAll());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) mobileControls.releaseAll();
+  });
+
+  // Responsive orientation handler
+  function checkOrientation() {
+    const warning = document.getElementById('touch-portrait-warning');
+    if (warning) {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      warning.style.display = isPortrait ? 'flex' : 'none';
+    }
+  }
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', checkOrientation);
+  checkOrientation();
+
+  console.log('[regta3] GTA III 10th Anniversary Mobile Controls initialized successfully');
 }
 
 
@@ -2538,6 +2141,8 @@ const Module = {
   instantiateWasm: async (imports, callback) => {
     const binary = await (await fetch(`re3.wasm?v=${BUILD_VERSION}`)).arrayBuffer();
     const wasm = await WebAssembly.instantiate(binary, imports);
+    window.wasmInstance = wasm.instance;
+    window.wasmMemory = wasm.instance.exports.kg || wasm.instance.exports.memory;
     if (window.agti) {
       window.agti(wasm.instance, () => callback(wasm.instance));
     } else {
@@ -2551,8 +2156,10 @@ const Module = {
    * -1 — параметра нет, иначе 0..7. При явном ?lang= C++ не форсит русский
    * поверх значения из re3.ini (см. CMenuManager::LoadSettings). */
   regta3LanguageOverride: languageOverride === null ? 0 : languageOverride,
-  /* regta3_js_is_touch: false ensures C++ keeps Method=0 (CONTROL_STANDARD) for mouse-look. */
-  regta3IsTouch: false,
+  /* regta3_js_is_touch: dynamically returns 1 during active gameplay on touch devices so C++ sends setTouchState() */
+  get regta3IsTouch() {
+    return (frameIndex > 0 && isTouchDevice) ? 1 : 0;
+  },
   /* regta3_js_touch_state: маска состояния игры → data-state-* на <body>. */
   setTouchState,
   locateFile(path) {

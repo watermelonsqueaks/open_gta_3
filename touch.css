@@ -1,725 +1,568 @@
-/* Open GTA III — Mobile Control System Specification Implementation */
+/* ==========================================================================
+   OPEN GTA III — ORIGINAL 2011 10th ANNIVERSARY MOBILE CONTROL SYSTEM
+   Authentic recreation of GTA III mobile landscape touchscreen controls.
+   ========================================================================== */
 
 :root {
-  --touch-scale: 1.0;
-  --touch-hud-opacity: 1.0;
-  --margin: max(12px, 2vmin);
-  --gap: 12px;
-  --slot-q: calc(80px * var(--touch-scale) + var(--gap));
-  --pad-base-size: calc(112px * var(--touch-scale));
-  --pad-knob-size: calc(44px * var(--touch-scale));
-  --btn-primary-size: calc(64px * var(--touch-scale));
-  --btn-std-size: calc(48px * var(--touch-scale));
-  --pedal-w: calc(56px * var(--touch-scale));
-  --pedal-h: calc(64px * var(--touch-scale));
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Authentic 2011 Mobile Proportions */
+  --btn-base-size: clamp(56px, 12vw, 76px);
+  --btn-large-size: clamp(66px, 14vw, 88px);
+  --pedal-width: clamp(52px, 11vw, 70px);
+  --pedal-height: clamp(80px, 16vw, 106px);
+  --steer-btn-width: clamp(60px, 13vw, 84px);
+  --steer-btn-height: clamp(64px, 13.5vw, 86px);
+  --joy-base-size: clamp(120px, 25vw, 160px);
+  --joy-knob-size: clamp(52px, 11vw, 68px);
+
+  /* Aesthetic Palette: Dark neutral semi-transparent surfaces with subtle borders */
+  --touch-bg-normal: rgba(14, 18, 26, 0.65);
+  --touch-bg-pressed: rgba(30, 41, 59, 0.85);
+  --touch-border-normal: rgba(255, 255, 255, 0.35);
+  --touch-border-pressed: rgba(255, 255, 255, 0.85);
+  --touch-accent-enter: rgba(234, 179, 8, 0.85);
+  --touch-accent-fire: rgba(239, 68, 68, 0.85);
+  --touch-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.2);
 }
 
-/* ==========================================================================
-   1. STRICT PC ISOLATION: Zero mobile features on desktop / PC browsers
-   ========================================================================== */
+/* Strictly hide all mobile controls on desktop (when body does not have data-is-touch="1") */
 :root:not([data-is-touch="1"]) .touch-controls-wrapper,
-body:not([data-is-touch="1"]) .touch-controls-wrapper,
-:root:not([data-is-touch="1"]) .touch-drawer,
-body:not([data-is-touch="1"]) .touch-drawer,
-:root:not([data-is-touch="1"]) .touch-weapon-overlay,
-body:not([data-is-touch="1"]) .touch-weapon-overlay,
-:root:not([data-is-touch="1"]) .touch-orientation-warning,
-body:not([data-is-touch="1"]) .touch-orientation-warning,
-:root:not([data-is-touch="1"]) .touch-top-bar,
-body:not([data-is-touch="1"]) .touch-top-bar {
+body:not([data-is-touch="1"]) .touch-controls-wrapper {
   display: none !important;
-  pointer-events: none !important;
   visibility: hidden !important;
+  pointer-events: none !important;
 }
 
-/* ==========================================================================
-   2. MOBILE CONTROLS WRAPPER (Active only when data-is-touch="1")
-   ========================================================================== */
-[data-is-touch="1"] .touch-controls-wrapper {
-  display: block;
+/* Master Touch Controls Wrapper */
+.touch-controls-wrapper {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 100;
+  z-index: 90;
   pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: none;
   overflow: hidden;
-}
-
-/* ==========================================================================
-   3. PERMANENT HUD AFFORDANCE: Secondary Controls Button (Slot U, Safe Top-Right)
-   ========================================================================== */
-.touch-persistent-btn {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + var(--margin));
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
-  width: calc(40px * var(--touch-scale));
-  height: calc(40px * var(--touch-scale));
-  min-width: 48px;
-  min-height: 48px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.75);
-  color: #38bdf8;
-  border: 1.5px solid rgba(56, 189, 248, 0.4);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  pointer-events: auto;
-  opacity: calc(0.45 * var(--touch-hud-opacity));
-  transition: opacity 120ms ease, transform 80ms ease, border-color 100ms;
-  z-index: 250;
-}
-
-.touch-persistent-btn:active,
-.touch-persistent-btn.active {
-  opacity: 1.0 !important;
-  transform: scale(0.94);
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.35);
-}
-
-/* ==========================================================================
-   4. PERMANENT HUD AFFORDANCE: Movement Pad (Slot L, Safe Bottom-Left)
-   ========================================================================== */
-#touch-move {
-  position: absolute;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin));
-  left: calc(env(safe-area-inset-left, 0px) + var(--margin));
-  width: var(--pad-base-size);
-  height: var(--pad-base-size);
-  min-width: 112px;
-  min-height: 112px;
-  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
   touch-action: none;
-  z-index: 150;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.touch-pad-base {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.65) 60%, rgba(15, 23, 42, 0.3) 100%);
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(255, 255, 255, 0.08);
-  opacity: calc(0.30 * var(--touch-hud-opacity));
-  transition: opacity 120ms ease, border-color 120ms, box-shadow 120ms;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#touch-move.touching .touch-pad-base {
-  opacity: calc(0.85 * var(--touch-hud-opacity));
-  border-color: rgba(56, 189, 248, 0.6);
-}
-
-/* Integrated Sprint Indicator Zone Ring (Section 7, radius >= 72dp) */
-.sprint-zone-ring {
-  position: absolute;
-  inset: -14px;
-  border-radius: 50%;
-  border: 2px dashed rgba(245, 158, 11, 0.25);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  pointer-events: none;
-  transition: border-color 120ms, box-shadow 120ms, opacity 120ms;
-  opacity: 0.5;
-}
-
-.sprint-zone-label {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: rgba(245, 158, 11, 0.7);
-  margin-top: -7px;
-  background: rgba(15, 23, 42, 0.85);
-  padding: 0 4px;
-  border-radius: 4px;
-  transition: color 120ms;
-}
-
-#touch-move.sprint-active .sprint-zone-ring {
-  border-color: #f59e0b;
-  border-style: solid;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.6), inset 0 0 16px rgba(245, 158, 11, 0.3);
-  opacity: 1.0;
-}
-
-#touch-move.sprint-active .sprint-zone-label {
-  color: #f59e0b;
-  font-weight: 900;
-}
-
-/* Hide sprint zone indicator in vehicle or aircraft mode */
-[data-state-car="1"] .sprint-zone-ring,
-.turret-mode .sprint-zone-ring,
-.aircraft-mode .sprint-zone-ring {
+/* Menu or Cutscene Active: Completely suppress touch gameplay controls */
+body[data-state-menu="1"] .touch-controls-wrapper,
+body[data-state-cutscene="1"] .touch-controls-wrapper {
   display: none !important;
-}
-
-.touch-pad-knob {
-  position: absolute;
-  width: var(--pad-knob-size);
-  height: var(--pad-knob-size);
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #38bdf8 0%, #0284c7 65%, #0369a1 100%);
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), inset 0 2px 6px rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-  opacity: calc(0.55 * var(--touch-hud-opacity));
-  will-change: transform;
-  transition: opacity 120ms ease;
-}
-
-#touch-move.touching .touch-pad-knob {
-  opacity: 1.0;
+  pointer-events: none !important;
 }
 
 /* ==========================================================================
-   5. TURRET OPERATION PAD (Slot T: Right Side)
+   1. FULL-SCREEN BACKGROUND CAMERA SWIPE LAYER
    ========================================================================== */
-#touch-turret-pad {
-  position: absolute;
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin) + var(--slot-q) * 0.5);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin) + 20px);
-  width: var(--pad-base-size);
-  height: var(--pad-base-size);
-  min-width: 112px;
-  min-height: 112px;
-  pointer-events: auto;
-  touch-action: none;
-  z-index: 150;
-}
-
-/* ==========================================================================
-   6. BACKGROUND CAMERA LOOK REGION (Full Screen Background outside controls)
-   ========================================================================== */
-#touch-look {
+#touch-camera-layer {
   position: absolute;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 80;
+  z-index: 10;
   pointer-events: auto;
   touch-action: none;
 }
 
-[data-state-menu="1"] #touch-look {
-  display: none !important;
-  pointer-events: none !important;
+/* ==========================================================================
+   2. FLOATING / DYNAMIC MOVEMENT JOYSTICK ZONE (On-Foot Left Side)
+   ========================================================================== */
+#touch-joystick-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48vw;
+  height: 100vh;
+  z-index: 20;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Floating joystick visual elements */
+.touch-floating-base {
+  position: absolute;
+  width: var(--joy-base-size);
+  height: var(--joy-base-size);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.75) 100%);
+  border: 2px solid var(--touch-border-normal);
+  box-shadow: var(--touch-shadow);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-floating-base.active {
+  opacity: 1;
+}
+
+.touch-floating-knob {
+  position: absolute;
+  width: var(--joy-knob-size);
+  height: var(--joy-knob-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, rgba(30, 41, 59, 0.9) 60%, rgba(15, 23, 42, 0.95) 100%);
+  border: 2px solid var(--touch-border-normal);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+/* Directional arrows watermark on joystick base */
+.touch-floating-base::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
 /* ==========================================================================
-   7. CONTEXTUAL ACTION SLOTS CLUSTER (Slots R0 through R6, Section 10)
+   3. BASE TOUCH BUTTON STYLING
    ========================================================================== */
-.touch-action-cluster {
+.touch-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--touch-bg-normal);
+  border: 2px solid var(--touch-border-normal);
+  box-shadow: var(--touch-shadow);
+  border-radius: 50%;
+  color: #f8fafc;
+  pointer-events: auto;
+  touch-action: none;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, background 0.08s ease, border-color 0.08s ease;
+  z-index: 30;
+}
+
+.touch-btn:active,
+.touch-btn.pressed {
+  background: var(--touch-bg-pressed);
+  border-color: var(--touch-border-pressed);
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.touch-btn svg {
+  width: 55%;
+  height: 55%;
+  fill: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   4. ON-FOOT CONTROL MODE (Right-Side Action Cluster)
+   ========================================================================== */
+#touch-onfoot-cluster {
+  position: absolute;
+  right: calc(var(--safe-right) + 16px);
+  bottom: calc(var(--safe-bottom) + 16px);
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* Primary Attack / Shoot / Melee Button */
+#btn-attack {
+  right: 0;
+  bottom: 68px;
+  width: var(--btn-large-size);
+  height: var(--btn-large-size);
+  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.65) 0%, rgba(127, 29, 29, 0.8) 100%);
+  border-color: rgba(252, 165, 165, 0.5);
+}
+
+#btn-attack.pressed,
+#btn-attack:active {
+  background: radial-gradient(circle at 35% 35%, rgba(239, 68, 68, 0.85) 0%, rgba(153, 27, 27, 0.95) 100%);
+  border-color: #fff;
+}
+
+/* Jump Button */
+#btn-jump {
+  right: 88px;
+  bottom: 0;
+  width: var(--btn-base-size);
+  height: var(--btn-base-size);
+}
+
+/* Sprint Button */
+#btn-sprint {
+  right: 0;
+  bottom: 0;
+  width: var(--btn-base-size);
+  height: var(--btn-base-size);
+}
+
+/* Contextual Enter Vehicle Button (Only shown when Claude can enter nearby vehicle) */
+#btn-enter-car {
+  right: 88px;
+  bottom: 96px;
+  width: var(--btn-base-size);
+  height: var(--btn-base-size);
+  background: radial-gradient(circle at 35% 35%, rgba(202, 138, 4, 0.7) 0%, rgba(113, 63, 18, 0.85) 100%);
+  border-color: rgba(253, 224, 71, 0.6);
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#btn-enter-car.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+#btn-enter-car.visible:active,
+#btn-enter-car.visible.pressed {
+  transform: scale(0.92);
+}
+
+/* Weapon Quick-Cycle (Top Right HUD weapon tap target) */
+#touch-weapon-cycle {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  right: calc(var(--safe-right) + 12px);
+  width: 90px;
+  height: 60px;
+  pointer-events: auto;
+  z-index: 40;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+
+#touch-weapon-cycle:active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ==========================================================================
+   5. DRIVING MODE (Steering Left & Pedals Right)
+   ========================================================================== */
+#touch-driving-cluster {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 160;
+  z-index: 30;
 }
 
-.touch-slot {
+/* Left-Side Steering Controls (A = Left, D = Right) */
+#touch-steering-group {
   position: absolute;
-  width: var(--btn-std-size);
-  height: var(--btn-std-size);
-  min-width: 48px;
-  min-height: 48px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), inset 0 1px 4px rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  left: calc(var(--safe-left) + 20px);
+  bottom: calc(var(--safe-bottom) + 20px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 14px;
   pointer-events: auto;
-  cursor: pointer;
-  opacity: calc(0.45 * var(--touch-hud-opacity));
-  background-size: 60% 60%;
-  background-position: center;
-  background-repeat: no-repeat;
-  will-change: transform, opacity;
-  transition: opacity 120ms ease-out, transform 120ms cubic-bezier(0.2, 0.9, 0.3, 1.0), border-color 100ms, background-color 100ms, box-shadow 100ms;
 }
 
-.touch-slot:active,
-.touch-slot.active {
-  opacity: 1.0 !important;
-  transform: scale(0.94);
-  background-color: rgba(56, 189, 248, 0.3);
-  border-color: #38bdf8;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.8), inset 0 2px 8px rgba(255, 255, 255, 0.4);
+.btn-steer {
+  position: relative;
+  width: var(--steer-btn-width);
+  height: var(--steer-btn-height);
+  border-radius: 16px;
+  background: var(--touch-bg-normal);
 }
 
-/* Primary Slot R0: Larger 64dp */
-.touch-slot.primary-action {
-  width: var(--btn-primary-size);
-  height: var(--btn-primary-size);
-  min-width: 64px;
-  min-height: 64px;
-  opacity: calc(0.55 * var(--touch-hud-opacity));
-  border-width: 2px;
-}
-
-/* Aircraft Pedals styling */
-.touch-slot.slot-pedal {
-  width: var(--pedal-w);
-  height: var(--pedal-h);
-  border-radius: 12px;
-  opacity: calc(0.55 * var(--touch-hud-opacity));
-}
-
-/* Latched Aim State (outline highlight + 75% opacity) */
-.touch-slot.latched-aim {
-  opacity: 0.75 !important;
-  border-color: #38bdf8 !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.7), inset 0 0 12px rgba(56, 189, 248, 0.3) !important;
-  background-color: rgba(2, 132, 199, 0.3) !important;
-}
-
-/* Hidden contextual slots */
-.touch-slot.slot-hidden {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transform: scale(0.96) !important;
-  transition: opacity 100ms ease-in, transform 100ms ease-in;
-}
-
-/* Slot Coordinates according to Section 10:
-   xR = W - m - 40dp*s
-   yB = H - m - 40dp*s
-   q = 80dp*s + g
-*/
-.slot-r0 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin));
-  transform-origin: center center;
-}
-
-.slot-r1 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin) + var(--slot-q));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin));
-  transform-origin: center center;
-}
-
-.slot-r2 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin) + var(--slot-q));
-  transform-origin: center center;
-}
-
-.slot-r3 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin) + var(--slot-q));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin) + var(--slot-q));
-  transform-origin: center center;
-}
-
-.slot-r4 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin) + var(--slot-q) * 2);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin));
-  transform-origin: center center;
-}
-
-.slot-r5 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin) + var(--slot-q) * 2);
-  transform-origin: center center;
-}
-
-.slot-r6 {
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin) + var(--slot-q));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--margin) + var(--slot-q) * 2);
-  transform-origin: center center;
-}
-
-/* Dynamic Slot Action Icons */
-.slot-action-fire { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22/%3E%3Cpath%20d%3D%22M12%202v3M12%2019v3M2%2012h3M19%2012h3%22/%3E%3C/svg%3E"); border-color: rgba(239, 68, 68, 0.6); }
-.slot-action-aim { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%2012h4M18%2012h4M12%202v4M12%2018v4%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228%22%20stroke-dasharray%3D%223%203%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22/%3E%3C/svg%3E"); border-color: rgba(56, 189, 248, 0.6); }
-.slot-action-jump { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%23f8fafc%22%3E%3Cpath%20d%3D%22M14%204a2%202%200%201%200%200-4%202%202%200%200%200%200%204zm1.5%205.5l-2.2-2.2c-.4-.4-.9-.6-1.5-.6s-1.1.2-1.5.6l-4%204%201.4%201.4L11%209.4V15l-3.3%202.5%201.2%201.6%203.6-2.7c.3-.2.5-.6.5-1V9.9l1.6%201.6c.2.2.5.3.7.3h3.7v-2h-3.5z%22/%3E%3C/svg%3E"); }
-.slot-action-enter { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M19%2017h2c.6%200%201-.4%201-1v-3c0-.9-.7-1.7-1.5-1.9C18.7%2010.6%2016%2010%2016%2010s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6%200-1.1.4-1.4.9L2%2012v4c0%20.6.4%201%201%201h2%22/%3E%3Ccircle%20cx%3D%227%22%20cy%3D%2217%22%20r%3D%222%22/%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2217%22%20r%3D%222%22/%3E%3Cpath%20d%3D%22M9%206l3-3m0%200l3%203m-3-3v7%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222.5%22/%3E%3C/svg%3E"); border-color: rgba(16, 185, 129, 0.6); }
-.slot-action-exit { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M19%2017h2c.6%200%201-.4%201-1v-3c0-.9-.7-1.7-1.5-1.9C18.7%2010.6%2016%2010%2016%2010s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6%200-1.1.4-1.4.9L2%2012v4c0%20.6.4%201%201%201h2%22/%3E%3Ccircle%20cx%3D%227%22%20cy%3D%2217%22%20r%3D%222%22/%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2217%22%20r%3D%222%22/%3E%3Cpath%20d%3D%22M12%202v6m0%200l-3-3m3%203l3-3%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222.5%22/%3E%3C/svg%3E"); border-color: rgba(239, 68, 68, 0.6); }
-.slot-action-weapon { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222%22%20y%3D%228%22%20width%3D%2214%22%20height%3D%225%22%20rx%3D%221%22/%3E%3Cpath%20d%3D%22M6%2013v5c0%20.6.4%201%201%201h2c.6%200%201-.4%201-1v-5M16%2010h4a2%202%200%200%201%202%202v1h-6v-3z%22/%3E%3Cline%20x1%3D%2211%22%20y1%3D%2210%22%20x2%3D%2213%22%20y2%3D%2210%22/%3E%3C/svg%3E"); }
-.slot-action-handbrake { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23f87171%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Cpath%20d%3D%22M5%207a10%2010%200%200%200%200%2010M19%207a10%2010%200%200%201%200%2010%22/%3E%3Ctext%20x%3D%2212%22%20y%3D%2216%22%20font-size%3D%2211%22%20font-weight%3D%22900%22%20text-anchor%3D%22middle%22%20fill%3D%22%23f87171%22%20stroke%3D%22none%22%20font-family%3D%22sans-serif%22%3EP%3C/text%3E%3C/svg%3E"); border-color: rgba(239, 68, 68, 0.6); }
-.slot-action-horn { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23facc15%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%2011v2a1%201%200%200%200%201%201h4l6%204V6L8%2010H4a1%201%200%200%200-1%201z%22/%3E%3Cpath%20d%3D%22M17%209a4%204%200%200%201%200%206M19%207a7%207%200%200%201%200%2010%22/%3E%3C/svg%3E"); border-color: rgba(250, 204, 21, 0.6); }
-.slot-action-zoomin { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%227%22/%3E%3Cline%20x1%3D%2220%22%20y1%3D%2220%22%20x2%3D%2216%22%20y2%3D%2216%22/%3E%3Cline%20x1%3D%2211%22%20y1%3D%228%22%20x2%3D%2211%22%20y2%3D%2214%22/%3E%3Cline%20x1%3D%228%22%20y1%3D%2211%22%20x2%3D%2214%22%20y2%3D%2211%22/%3E%3C/svg%3E"); }
-.slot-action-zoomout { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%227%22/%3E%3Cline%20x1%3D%2220%22%20y1%3D%2220%22%20x2%3D%2216%22%20y2%3D%2216%22/%3E%3Cline%20x1%3D%228%22%20y1%3D%2211%22%20x2%3D%2214%22%20y2%3D%2211%22/%3E%3C/svg%3E"); }
-.slot-action-forward { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2028%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222%22%3E%3Crect%20x%3D%224%22%20y%3D%222%22%20width%3D%2216%22%20height%3D%2224%22%20rx%3D%223%22%20fill%3D%22rgba%2815%2C23%2C42%2C0.8%29%22/%3E%3Cpath%20d%3D%22M7%2016l5-5%205%205M7%2021l5-5%205%205%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E"); border-color: rgba(16, 185, 129, 0.6); }
-.slot-action-backwards { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2028%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%3E%3Crect%20x%3D%224%22%20y%3D%222%22%20width%3D%2216%22%20height%3D%2224%22%20rx%3D%223%22%20fill%3D%22rgba%2815%2C23%2C42%2C0.8%29%22/%3E%3Cpath%20d%3D%22M7%2012l5%205%205-5M7%207l5%205%205-5%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E"); border-color: rgba(239, 68, 68, 0.6); }
-
-/* ==========================================================================
-   8. SECONDARY DRAWER (Section 8)
-   ========================================================================== */
-.touch-drawer {
+/* Right-Side Vehicle Action Cluster */
+#touch-driving-pedals {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + var(--margin) + 54px);
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
-  width: 270px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 120px);
-  background: rgba(15, 23, 42, 0.92);
-  border: 1.5px solid rgba(56, 189, 248, 0.4);
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 16px);
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+/* Brake / Reverse Pedal */
+#btn-brake {
+  position: relative;
+  width: var(--pedal-width);
+  height: calc(var(--pedal-height) * 0.88);
   border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: radial-gradient(circle at 50% 30%, rgba(220, 38, 38, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+/* Accelerate / Gas Pedal */
+#btn-accelerate {
+  position: relative;
+  width: var(--pedal-width);
+  height: var(--pedal-height);
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 30%, rgba(22, 163, 74, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+/* Upper Vehicle Action Row (Handbrake, Horn, Exit) */
+#touch-driving-actions {
+  position: absolute;
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 130px);
+  display: flex;
+  gap: 14px;
   pointer-events: auto;
-  z-index: 260;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  overflow-y: auto;
-  opacity: 1.0;
-  animation: drawerEnter 100ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.touch-drawer[hidden] {
-  display: none !important;
+.btn-veh-round {
+  position: relative;
+  width: var(--btn-base-size);
+  height: var(--btn-base-size);
 }
 
-@keyframes drawerEnter {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.drawer-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: #38bdf8;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.drawer-close {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 20px;
-  line-height: 1;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-.drawer-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.drawer-btn {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: #e2e8f0;
-  padding: 10px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  min-height: 52px;
-  transition: background 80ms, border-color 80ms, transform 80ms;
-}
-
-.drawer-btn:active,
-.drawer-btn.active {
-  background: rgba(56, 189, 248, 0.3);
-  border-color: #38bdf8;
-  transform: scale(0.96);
-}
-
-.drawer-icon {
-  width: 22px;
-  height: 22px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.icon-camera { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M23%207l-7%205%207%205V7z%22/%3E%3Crect%20x%3D%221%22%20y%3D%225%22%20width%3D%2215%22%20height%3D%2214%22%20rx%3D%222%22%20ry%3D%222%22/%3E%3C/svg%3E"); }
-.icon-behind { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M1%2012s4-7%2011-7%2011%207%2011%207-4%207-11%207-11-7-11-7z%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22/%3E%3Cpath%20d%3D%22M12%202v3M12%2019v3%22%20stroke%3D%22%2338bdf8%22/%3E%3C/svg%3E"); }
-.icon-look-left { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Cpath%20d%3D%22M14%208l-4%204%204%204%22%20stroke-width%3D%222.5%22/%3E%3C/svg%3E"); }
-.icon-look-right { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Cpath%20d%3D%22M10%208l4%204-4%204%22%20stroke-width%3D%222.5%22/%3E%3C/svg%3E"); }
-.icon-radio { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23a855f7%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2018V5l12-2v13%22/%3E%3Ccircle%20cx%3D%226%22%20cy%3D%2218%22%20r%3D%223%22%20fill%3D%22%23a855f7%22/%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2216%22%20r%3D%223%22%20fill%3D%22%23a855f7%22/%3E%3C/svg%3E"); }
-.icon-job { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%23eab308%22%3E%3Cpath%20d%3D%22M12%202l2.4%206.9%207.3.3-5.7%204.6%202%207.1-6-4.2-6%204.2%202-7.1L2.3%209.2l7.3-.3L12%202z%22/%3E%3C/svg%3E"); }
-.icon-settings { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22/%3E%3Cpath%20d%3D%22M19.4%2015a1.65%201.65%200%200%200%20.33%201.82l.06.06a2%202%200%200%201%200%202.83%202%202%200%200%201-2.83%200l-.06-.06a1.65%201.65%200%200%200-1.82-.33%201.65%201.65%200%200%200-1%201.51V21a2%202%200%200%201-2%202%202%202%200%200%201-2-2v-.09A1.65%201.65%200%200%200%209%2019.4a1.65%201.65%200%200%200-1.82.33l-.06.06a2%202%200%200%201-2.83%200%202%202%200%200%201%200-2.83l.06-.06a1.65%201.65%200%200%200%20.33-1.82%201.65%201.65%200%200%200-1.51-1H3a2%202%200%200%201-2-2%202%202%200%200%201%202-2h.09A1.65%201.65%200%200%200%204.6%209a1.65%201.65%200%200%200-.33-1.82l-.06-.06a2%202%200%200%201%200-2.83%202%202%200%200%201%202.83%200l.06.06a1.65%201.65%200%200%200%201.82.33H9a1.65%201.65%200%200%200%201-1.51V3a2%202%200%200%201%202-2%202%202%200%200%201%202%202v.09a1.65%201.65%200%200%200%201%201.51%201.65%201.65%200%200%200%201.82-.33l.06-.06a2%202%200%200%201%202.83%200%202%202%200%200%201%200%202.83l-.06.06a1.65%201.65%200%200%200-.33%201.82V9a1.65%201.65%200%200%200%201.51%201H21a2%202%200%200%201%202%202%202%202%200%200%201-2%202h-.09a1.65%201.65%200%200%200-1.51%201z%22/%3E%3C/svg%3E"); }
-
-.drawer-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #f1f5f9;
-}
-
-.drawer-settings-panel {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.drawer-settings-panel[hidden] {
-  display: none !important;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 600;
-  color: #cbd5e1;
-}
-
-.setting-ctrl {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.setting-ctrl input[type="range"] {
-  width: 90px;
-  accent-color: #38bdf8;
-}
-
-.drawer-setting-btn {
-  margin-top: 6px;
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
+#btn-exit-car {
+  background: radial-gradient(circle at 35% 35%, rgba(202, 138, 4, 0.7) 0%, rgba(113, 63, 18, 0.85) 100%);
+  border-color: rgba(253, 224, 71, 0.6);
 }
 
 /* ==========================================================================
-   9. MODAL WEAPON OVERLAY (Section 8, 17)
+   6. DRIVE-BY MODE CONTROLS
    ========================================================================== */
-.touch-weapon-overlay {
+#touch-driveby-group {
+  position: absolute;
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 204px);
+  display: flex;
+  gap: 14px;
+  pointer-events: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#touch-driveby-group.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.btn-driveby {
+  position: relative;
+  width: calc(var(--btn-base-size) * 1.05);
+  height: calc(var(--btn-base-size) * 0.9);
+  border-radius: 14px;
+  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.7) 0%, rgba(30, 41, 59, 0.85) 100%);
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+/* ==========================================================================
+   7. SPECIAL VEHICLE (Turret / Firetruck / Taxi / Vigilante)
+   ========================================================================== */
+#touch-special-group {
+  position: absolute;
+  left: calc(var(--safe-left) + 20px);
+  bottom: calc(var(--safe-bottom) + 120px);
+  display: flex;
+  gap: 14px;
+  pointer-events: auto;
+}
+
+#btn-sub-mission {
+  position: relative;
+  width: var(--btn-base-size);
+  height: var(--btn-base-size);
+}
+
+#btn-turret-fire {
+  position: absolute;
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 130px);
+  width: var(--btn-large-size);
+  height: var(--btn-large-size);
+  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.75) 0%, rgba(127, 29, 29, 0.9) 100%);
+  border-color: rgba(252, 165, 165, 0.7);
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   8. STATE-DRIVEN DISPLAY TOGGLES
+   ========================================================================== */
+/* Default all contextual clusters to hidden */
+#touch-joystick-zone,
+#touch-onfoot-cluster,
+#touch-driving-cluster,
+#touch-driveby-group,
+#touch-special-group {
+  display: none;
+}
+
+/* On-Foot State */
+body[data-touch-state="on_foot" i] #touch-joystick-zone,
+body[data-touch-state="on_foot" i] #touch-onfoot-cluster,
+#touch-controls[data-touch-state="on_foot" i] #touch-joystick-zone,
+#touch-controls[data-touch-state="on_foot" i] #touch-onfoot-cluster {
+  display: block !important;
+}
+
+body[data-touch-state="on_foot" i] #touch-driving-cluster,
+body[data-touch-state="on_foot" i] #touch-driveby-group,
+body[data-touch-state="on_foot" i] #btn-turret-fire,
+#touch-controls[data-touch-state="on_foot" i] #touch-driving-cluster,
+#touch-controls[data-touch-state="on_foot" i] #touch-driveby-group,
+#touch-controls[data-touch-state="on_foot" i] #btn-turret-fire {
+  display: none !important;
+}
+
+/* Driving State */
+body[data-touch-state="driving" i] #touch-joystick-zone,
+body[data-touch-state="driving" i] #touch-onfoot-cluster,
+#touch-controls[data-touch-state="driving" i] #touch-joystick-zone,
+#touch-controls[data-touch-state="driving" i] #touch-onfoot-cluster {
+  display: none !important;
+}
+
+body[data-touch-state="driving" i] #touch-driving-cluster,
+#touch-controls[data-touch-state="driving" i] #touch-driving-cluster {
+  display: block !important;
+}
+
+/* Drive-By State */
+body[data-touch-state="drive_by" i] #touch-joystick-zone,
+body[data-touch-state="drive_by" i] #touch-onfoot-cluster,
+#touch-controls[data-touch-state="drive_by" i] #touch-joystick-zone,
+#touch-controls[data-touch-state="drive_by" i] #touch-onfoot-cluster {
+  display: none !important;
+}
+
+body[data-touch-state="drive_by" i] #touch-driving-cluster,
+#touch-controls[data-touch-state="drive_by" i] #touch-driving-cluster {
+  display: block !important;
+}
+
+body[data-touch-state="drive_by" i] #touch-driveby-group,
+#touch-controls[data-touch-state="drive_by" i] #touch-driveby-group {
+  display: flex !important;
+}
+
+/* Special Vehicle State */
+body[data-touch-state="special_vehicle" i] #touch-joystick-zone,
+body[data-touch-state="special_vehicle" i] #touch-onfoot-cluster,
+#touch-controls[data-touch-state="special_vehicle" i] #touch-joystick-zone,
+#touch-controls[data-touch-state="special_vehicle" i] #touch-onfoot-cluster {
+  display: none !important;
+}
+
+body[data-touch-state="special_vehicle" i] #touch-driving-cluster,
+#touch-controls[data-touch-state="special_vehicle" i] #touch-driving-cluster {
+  display: block !important;
+}
+
+body[data-touch-state="special_vehicle" i] #touch-special-group,
+#touch-controls[data-touch-state="special_vehicle" i] #touch-special-group {
+  display: flex !important;
+}
+
+/* Menu State: everything hidden */
+body[data-touch-state="menu" i] .touch-controls-wrapper,
+#touch-controls[data-touch-state="menu" i] {
+  display: none !important;
+}
+
+/* ==========================================================================
+   9. PORTRAIT ORIENTATION WARNING
+   ========================================================================== */
+#touch-portrait-warning {
   position: fixed;
   inset: 0;
-  z-index: 350;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  animation: weaponFade 100ms ease-out;
-}
-
-.touch-weapon-overlay[hidden] {
-  display: none !important;
-}
-
-@keyframes weaponFade {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1.0); }
-}
-
-.weapon-overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.weapon-overlay-card {
-  position: relative;
-  z-index: 2;
-  width: min(440px, 90vw);
-  background: rgba(15, 23, 42, 0.95);
-  border: 1.5px solid rgba(56, 189, 248, 0.5);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9);
-}
-
-.weapon-overlay-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.weapon-overlay-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #38bdf8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.weapon-close-btn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 24px;
-  line-height: 1;
-  padding: 0 8px;
-  cursor: pointer;
-}
-
-.weapon-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.weapon-sector-btn {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  color: #e2e8f0;
-  padding: 10px 4px;
-  display: flex;
+  z-index: 9999;
+  background: rgba(8, 12, 20, 0.96);
+  backdrop-filter: blur(12px);
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  cursor: pointer;
-  min-height: 60px;
-  transition: border-color 80ms, background 80ms, transform 80ms;
-}
-
-.weapon-sector-btn.selected {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.25);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-}
-
-.weapon-sector-icon {
-  font-size: 22px;
-}
-
-.weapon-sector-name {
-  font-size: 10px;
-  font-weight: 700;
+  color: #fff;
+  padding: 32px;
   text-align: center;
 }
 
-.weapon-overlay-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding-top: 10px;
-}
-
-.weapon-nav-btn {
-  background: rgba(30, 41, 59, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.weapon-active-name {
-  font-size: 13px;
-  font-weight: 800;
-  color: #f1f5f9;
-}
-
-/* ==========================================================================
-   10. PORTRAIT ORIENTATION WARNING
-   ========================================================================== */
-.touch-orientation-warning {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 8, 10, 0.95);
-  z-index: 500;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  color: #f8fafc;
-  pointer-events: auto;
-}
-
-.touch-orientation-warning[hidden] {
-  display: none !important;
-}
-
-.orientation-icon {
-  font-size: 48px;
-  animation: rotatePhone 2s infinite ease-in-out;
-}
-
-@keyframes rotatePhone {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-90deg); }
-}
-
-.orientation-text {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-/* Auto-display orientation warning when portrait on mobile */
-@media (orientation: portrait) and (pointer: coarse) {
-  [data-is-touch="1"] .touch-orientation-warning {
+@media (orientation: portrait) {
+  body[data-is-touch="1"] #touch-portrait-warning {
     display: flex !important;
   }
 }
 
+.portrait-icon {
+  font-size: 54px;
+  margin-bottom: 20px;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+}
+
+.portrait-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.portrait-desc {
+  font-size: 14px;
+  color: #94a3b8;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
 /* ==========================================================================
-   11. LEFT-HANDED MODE (Section 18)
+   10. DEVELOPER DEBUG HUD (?touchdebug=1)
    ========================================================================== */
-body[data-touch-hand="left"] #touch-move {
-  left: auto;
-  right: calc(env(safe-area-inset-right, 0px) + var(--margin));
+#touch-debug-hud {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10000;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #e2e8f0;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+  max-width: 320px;
+  display: none;
 }
 
-body[data-touch-hand="left"] .touch-persistent-btn {
-  right: auto;
-  left: calc(env(safe-area-inset-left, 0px) + var(--margin));
+#touch-debug-hud.visible {
+  display: block;
 }
 
-body[data-touch-hand="left"] .touch-drawer {
-  right: auto;
-  left: calc(env(safe-area-inset-left, 0px) + var(--margin));
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
 }
 
-body[data-touch-hand="left"] #touch-look {
-  right: auto;
-  left: 0;
+.debug-val {
+  font-weight: 700;
+  color: #38bdf8;
 }
-
-body[data-touch-hand="left"] .slot-r0 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin)); }
-body[data-touch-hand="left"] .slot-r1 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin) + var(--slot-q)); }
-body[data-touch-hand="left"] .slot-r2 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin)); }
-body[data-touch-hand="left"] .slot-r3 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin) + var(--slot-q)); }
-body[data-touch-hand="left"] .slot-r4 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin) + var(--slot-q) * 2); }
-body[data-touch-hand="left"] .slot-r5 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin)); }
-body[data-touch-hand="left"] .slot-r6 { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin) + var(--slot-q)); }
-body[data-touch-hand="left"] #touch-turret-pad { right: auto; left: calc(env(safe-area-inset-left, 0px) + var(--margin) + var(--slot-q) * 0.5); }
