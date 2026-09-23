@@ -1,4 +1,4 @@
-const BUILD_VERSION = 159;
+const BUILD_VERSION = 160;
 const DEFAULTS_RESET_VERSION = 140;
 const ASSET_CACHE_NAME = 'gta3-assets-v2';
 const PRELOAD_CONCURRENCY = 32;
@@ -1421,15 +1421,16 @@ class MobileControlState {
     this.activeActions = new Set();
     this.joyX = 0;
     this.joyY = 0;
+    this.joyPwmTimer = null;
+    this.joyTick = 0;
+    this.joyTarget = { yAction: null, xAction: null, pctY: 0, pctX: 0 };
 
     this.keyDefinitions = {
       forward: {
-        keys: [{ key: 'w', code: 'KeyW', keyCode: 87 }, { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }],
-        gpBtn: TOUCH_BTN.A
+        keys: [{ key: 'w', code: 'KeyW', keyCode: 87 }, { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }]
       },
       reverse: {
-        keys: [{ key: 's', code: 'KeyS', keyCode: 83 }, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }],
-        gpBtn: TOUCH_BTN.X
+        keys: [{ key: 's', code: 'KeyS', keyCode: 83 }, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }]
       },
       steerLeft: {
         keys: [{ key: 'a', code: 'KeyA', keyCode: 65 }, { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }],
@@ -1438,6 +1439,14 @@ class MobileControlState {
       steerRight: {
         keys: [{ key: 'd', code: 'KeyD', keyCode: 68 }, { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }],
         gpBtn: TOUCH_BTN.DPAD_RIGHT
+      },
+      pedalGas: {
+        keys: [{ key: 'w', code: 'KeyW', keyCode: 87 }, { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }],
+        gpBtn: TOUCH_BTN.A
+      },
+      pedalBrake: {
+        keys: [{ key: 's', code: 'KeyS', keyCode: 83 }, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }],
+        gpBtn: TOUCH_BTN.X
       },
       attack: {
         keys: [{ key: 'Control', code: 'ControlLeft', keyCode: 17 }, { key: '0', code: 'Numpad0', keyCode: 96 }],
@@ -1527,6 +1536,11 @@ class MobileControlState {
     setTimeout(() => this.set(actionName, 'tap', false), 50);
   }
 
+  /**
+   * Smart Quadrant / Angular PWM Joystick:
+   * Calculates the exact angle & quadrant percentage and pulses the quadrant keys proportionally
+   * (e.g. 60% forward, 40% right duty cycle) for smooth analog-like walking.
+   */
   setJoystick(nx, ny) {
     this.joyX = nx;
     this.joyY = ny;
@@ -1538,21 +1552,77 @@ class MobileControlState {
       } catch (_) {}
     }
 
-    this.set('forward', 'joy_y', ny < -0.22);
-    this.set('reverse', 'joy_y', ny > 0.22);
-    this.set('steerLeft', 'joy_x', nx < -0.22);
-    this.set('steerRight', 'joy_x', nx > 0.22);
+    const mag = Math.hypot(nx, ny);
+    const deadzone = 0.18;
+    if (mag < deadzone) {
+      this.resetJoystick();
+      return;
+    }
+
+    // Determine target quadrant actions
+    const yAction = ny < 0 ? 'forward' : 'reverse';
+    const xAction = nx < 0 ? 'steerLeft' : 'steerRight';
+    const oppY = ny < 0 ? 'reverse' : 'forward';
+    const oppX = nx < 0 ? 'steerRight' : 'steerLeft';
+
+    // Instantly release opposing axes
+    this.set(oppY, 'joy_pwm', false);
+    this.set(oppX, 'joy_pwm', false);
+
+    const absX = Math.abs(nx);
+    const absY = Math.abs(ny);
+    const total = absX + absY;
+    const pctY = total > 0 ? (absY / total) : 0;
+    const pctX = total > 0 ? (absX / total) : 0;
+
+    this.joyTarget = { yAction, xAction, pctY, pctX };
+
+    if (!this.joyPwmTimer) {
+      this.joyTick = 0;
+      this._pwmStep();
+      this.joyPwmTimer = setInterval(() => this._pwmStep(), 12);
+    } else {
+      this._pwmStep();
+    }
+  }
+
+  _pwmStep() {
+    const t = this.joyTarget;
+    if (!t || (!t.yAction && !t.xAction)) return;
+
+    // 10-step duty cycle (12ms * 10 = 120ms total cycle)
+    const step = (this.joyTick++) % 10;
+    const ySteps = Math.round(t.pctY * 10);
+    const xSteps = Math.round(t.pctX * 10);
+
+    const isYDown = step < ySteps;
+    const isXDown = step >= (10 - xSteps);
+
+    if (t.yAction) this.set(t.yAction, 'joy_pwm', isYDown);
+    if (t.xAction) this.set(t.xAction, 'joy_pwm', isXDown);
   }
 
   resetJoystick() {
+    if (this.joyPwmTimer) {
+      clearInterval(this.joyPwmTimer);
+      this.joyPwmTimer = null;
+    }
+    this.joyTick = 0;
+    this.joyTarget = { yAction: null, xAction: null, pctY: 0, pctX: 0 };
     this.joyX = 0;
     this.joyY = 0;
+
     if (touchEmulator && touchPadIndex >= 0) {
       try {
         touchEmulator.MoveAxis(touchPadIndex, 0, 0);
         touchEmulator.MoveAxis(touchPadIndex, 1, 0);
       } catch (_) {}
     }
+
+    this.set('forward', 'joy_pwm', false);
+    this.set('reverse', 'joy_pwm', false);
+    this.set('steerLeft', 'joy_pwm', false);
+    this.set('steerRight', 'joy_pwm', false);
     this.set('forward', 'joy_y', false);
     this.set('reverse', 'joy_y', false);
     this.set('steerLeft', 'joy_x', false);
@@ -1648,6 +1718,11 @@ class ControlStateMachine {
     this.previousState = this.currentState;
     this.currentState = nextState;
 
+    // Reset sprint toggle when transitioning away from on-foot
+    if (nextState !== ControlState.ON_FOOT && typeof window.resetSprintToggle === 'function') {
+      window.resetSprintToggle();
+    }
+
     // Deterministic cleanup: release all held touch inputs across state transitions
     mobileControls.releaseAll();
 
@@ -1674,12 +1749,6 @@ class ControlStateMachine {
   }
 
   updateContextualButtons() {
-    const enterCarBtn = document.getElementById('btn-enter-car');
-    if (enterCarBtn) {
-      const showEnter = (this.currentState === ControlState.ON_FOOT) && this.nearCar;
-      enterCarBtn.classList.toggle('visible', showEnter);
-    }
-
     const subMissionBtn = document.getElementById('btn-sub-mission');
     if (subMissionBtn) {
       const showJob = (this.currentState === ControlState.DRIVING || this.currentState === ControlState.SPECIAL_VEHICLE) && !!(this.flags & (1 << 5));
@@ -2074,14 +2143,36 @@ function installTouchControls() {
   // On foot action buttons
   bindTouchButton('btn-attack', 'attack');
   bindTouchButton('btn-jump', 'jump');
-  bindTouchButton('btn-sprint', 'sprint');
   bindTouchButton('btn-enter-car', 'enterExit');
+
+  // Sprint Button Toggle: tap once to enable and keep running; tap again to disable
+  const btnSprint = document.getElementById('btn-sprint');
+  if (btnSprint) {
+    let isSprinting = false;
+
+    function setSprintToggle(on) {
+      isSprinting = on;
+      btnSprint.classList.toggle('toggle-active', on);
+      btnSprint.classList.toggle('active', on);
+      mobileControls.set('sprint', 'btn-sprint-toggle', on);
+    }
+
+    window.resetSprintToggle = () => {
+      if (isSprinting) setSprintToggle(false);
+    };
+
+    btnSprint.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSprintToggle(!isSprinting);
+    });
+  }
 
   // Driving controls
   bindTouchButton('btn-steer-left', 'steerLeft');
   bindTouchButton('btn-steer-right', 'steerRight');
-  bindTouchButton('btn-pedal-gas', 'forward');
-  bindTouchButton('btn-pedal-brake', 'reverse');
+  bindTouchButton('btn-pedal-gas', 'pedalGas');
+  bindTouchButton('btn-pedal-brake', 'pedalBrake');
   bindTouchButton('btn-handbrake', 'handbrake');
   bindTouchButton('btn-horn', 'horn');
   bindTouchButton('btn-exit-car', 'enterExit');
@@ -2104,6 +2195,7 @@ function installTouchControls() {
     });
   }
 
+  initMenuTouchClickSupport();
   startProximityLoop();
   initTouchDebugHud();
   controlStateMachine.transitionTo(ControlState.ON_FOOT);
@@ -2129,6 +2221,89 @@ function installTouchControls() {
   console.log('[regta3] GTA III 10th Anniversary Mobile Controls initialized successfully');
 }
 
+/**
+ * Menu Touch Tap-to-Click Support
+ * In the game menu, converts clean touch taps (< 18px drag, < 450ms) into
+ * synthetic mousemove (to highlight the item), mousedown + delay + mouseup + click,
+ * and Enter keydown/keyup so touching any menu option executes it cleanly.
+ */
+function initMenuTouchClickSupport() {
+  const canvasEl = document.getElementById('canvas');
+  if (!canvasEl) return;
+
+  let menuTouchStart = null;
+
+  window.addEventListener('pointerdown', (e) => {
+    const isMenu = (controlStateMachine.currentState === ControlState.MENU) || (document.body.dataset.stateMenu === '1');
+    if (!isMenu) return;
+    if (e.target !== canvasEl && e.target !== document.body && !e.target.closest('#canvas-container')) return;
+
+    menuTouchStart = {
+      x: e.clientX,
+      y: e.clientY,
+      time: performance.now(),
+      pointerId: e.pointerId
+    };
+  }, true);
+
+  window.addEventListener('pointerup', (e) => {
+    if (!menuTouchStart || e.pointerId !== menuTouchStart.pointerId) return;
+    const start = menuTouchStart;
+    menuTouchStart = null;
+
+    const isMenu = (controlStateMachine.currentState === ControlState.MENU) || (document.body.dataset.stateMenu === '1');
+    if (!isMenu) return;
+
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+    const dt = performance.now() - start.time;
+
+    if (dist < 18 && dt < 450) {
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      canvasEl.dispatchEvent(new MouseEvent('mousemove', {
+        clientX, clientY,
+        bubbles: true, cancelable: true
+      }));
+
+      canvasEl.dispatchEvent(new MouseEvent('mousedown', {
+        button: 0, buttons: 1,
+        clientX, clientY,
+        bubbles: true, cancelable: true
+      }));
+
+      setTimeout(() => {
+        canvasEl.dispatchEvent(new MouseEvent('mouseup', {
+          button: 0, buttons: 0,
+          clientX, clientY,
+          bubbles: true, cancelable: true
+        }));
+        canvasEl.dispatchEvent(new MouseEvent('click', {
+          button: 0,
+          clientX, clientY,
+          bubbles: true, cancelable: true
+        }));
+
+        const kDown = new KeyboardEvent('keydown', {
+          key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        });
+        const kUp = new KeyboardEvent('keyup', {
+          key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        });
+        window.dispatchEvent(kDown);
+        canvasEl.dispatchEvent(kDown);
+        setTimeout(() => {
+          window.dispatchEvent(kUp);
+          canvasEl.dispatchEvent(kUp);
+        }, 50);
+      }, 60);
+    }
+  }, true);
+}
 
 async function resolveAsyncUrl(file) {
   const path = toAssetPath(file);
@@ -2143,9 +2318,38 @@ async function resolveAsyncUrl(file) {
   return url;
 }
 
+function patchRadarTopLeft(wasmBytes) {
+  // Float32 400.0f: 00 00 c8 43 (Places radar center at Y = 80px on 480p reference, Top-Left)
+  const f_129 = [0x00, 0x00, 0x01, 0x43];
+  const f_123 = [0x00, 0x00, 0xf6, 0x42];
+  const f_400 = [0x00, 0x00, 0xc8, 0x43];
+
+  function replacePattern(target) {
+    let count = 0;
+    for (let i = 0; i < wasmBytes.length - 4; i++) {
+      if (wasmBytes[i] === target[0] && wasmBytes[i+1] === target[1] &&
+          wasmBytes[i+2] === target[2] && wasmBytes[i+3] === target[3]) {
+        wasmBytes[i] = f_400[0];
+        wasmBytes[i+1] = f_400[1];
+        wasmBytes[i+2] = f_400[2];
+        wasmBytes[i+3] = f_400[3];
+        count++;
+      }
+    }
+    return count;
+  }
+  const c129 = replacePattern(f_129);
+  const c123 = replacePattern(f_123);
+  if (c129 > 0 || c123 > 0) {
+    console.log(`[regta3] Applied Top-Left radar positioning patch (${c129} 129f, ${c123} 123f replaced with 400f)`);
+  }
+}
+
 const Module = {
   instantiateWasm: async (imports, callback) => {
-    const binary = await (await fetch(`re3.wasm?v=${BUILD_VERSION}`)).arrayBuffer();
+    const raw = await (await fetch(`re3.wasm?v=${BUILD_VERSION}`)).arrayBuffer();
+    const binary = new Uint8Array(raw);
+    patchRadarTopLeft(binary);
     const wasm = await WebAssembly.instantiate(binary, imports);
     window.wasmInstance = wasm.instance;
     window.wasmMemory = wasm.instance.exports.kg || wasm.instance.exports.memory;
@@ -2320,7 +2524,22 @@ const Module = {
       }
     } catch (_) {}
     const idbfsOk = await mountUserfilesIdbfs(Module);
-    if (idbfsOk) scheduleUserfilesPersist(Module);
+    if (idbfsOk) {
+      scheduleUserfilesPersist(Module);
+      try {
+        const urlParams = new URLSearchParams(location.search);
+        if (urlParams.get('newgame') === '1' || urlParams.get('clearsaves') === '1') {
+          for (let i = 1; i <= 8; i++) {
+            const saveP = `${USERFILES_MOUNT}/GTA3sf${i}.b`;
+            if (Module.FS.analyzePath(saveP).exists) {
+              Module.FS.unlink(saveP);
+              console.log(`[regta3] cleared save slot ${i}: ${saveP}`);
+            }
+          }
+          if (typeof Module.persistUserfiles === 'function') Module.persistUserfiles();
+        }
+      } catch (_) {}
+    }
 
     /* Игра читает/пишет userfiles/re3.ini (IDBFS, персистентен между
      * перезагрузками — см. src/core/re3.cpp). Дефолты сеются только когда

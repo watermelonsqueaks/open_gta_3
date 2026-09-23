@@ -244,6 +244,15 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
   bottom: 0;
   width: 76px;
   height: 76px;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#btn-sprint.toggle-active {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.6) 0%, rgba(180, 83, 9, 0.45) 60%, rgba(0, 0, 0, 0.65) 100%) !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.85), inset 0 0 10px rgba(251, 191, 36, 0.4) !important;
+  color: #fffbeb !important;
+  transform: scale(0.96);
 }
 
 /* Attack / Punch (Fist): Directly above Jump */
@@ -254,27 +263,21 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
   height: 72px;
 }
 
-/* Enter Car (Door): Directly above Attack */
+/* Enter Car (Door): Directly above Attack - Permanently visible in on-foot mode */
 #btn-enter-car {
   right: 6px;
   bottom: 168px;
   width: 64px;
   height: 64px;
-  opacity: 0;
-  transform: scale(0.7);
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-#btn-enter-car.visible {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-#btn-enter-car.visible:active,
-#btn-enter-car.visible.pressed {
-  transform: scale(0.95);
+#btn-enter-car:active,
+#btn-enter-car.pressed {
+  transform: scale(0.92);
 }
 
 /* ==========================================================================
