@@ -1,4 +1,4 @@
-const BUILD_VERSION = 158;
+const BUILD_VERSION = 159;
 const DEFAULTS_RESET_VERSION = 140;
 const ASSET_CACHE_NAME = 'gta3-assets-v2';
 const PRELOAD_CONCURRENCY = 32;
@@ -1472,7 +1472,7 @@ class MobileControlState {
         gpBtn: TOUCH_BTN.R3
       },
       camera: {
-        keys: [{ key: 'c', code: 'KeyC', keyCode: 67 }, { key: 'Home', code: 'Home', keyCode: 36 }],
+        keys: [{ key: 'v', code: 'KeyV', keyCode: 86 }, { key: 'c', code: 'KeyC', keyCode: 67 }, { key: 'Home', code: 'Home', keyCode: 36 }],
         gpBtn: TOUCH_BTN.BACK
       },
       lookLeft: {
@@ -1723,7 +1723,7 @@ function initFloatingJoystick() {
 
     const kx = Math.cos(angle) * (clampedDist / maxRadius) * maxVisual;
     const ky = Math.sin(angle) * (clampedDist / maxRadius) * maxVisual;
-    knob.style.transform = 'translate(' + kx.toFixed(1) + 'px, ' + ky.toFixed(1) + 'px)';
+    knob.style.transform = 'translate(calc(-50% + ' + kx.toFixed(1) + 'px), calc(-50% + ' + ky.toFixed(1) + 'px))';
 
     if (dist < deadzone) {
       mobileControls.setJoystick(0, 0);
@@ -1740,7 +1740,9 @@ function initFloatingJoystick() {
     activePointerId = null;
     zone.classList.remove('touching');
     base.classList.remove('active');
-    knob.style.transform = 'translate(0px, 0px)';
+    base.style.left = '';
+    base.style.top = '';
+    knob.style.transform = 'translate(-50%, -50%)';
     mobileControls.resetJoystick();
   }
 
@@ -2065,6 +2067,10 @@ function installTouchControls() {
   initFloatingJoystick();
   initTouchCameraLayer();
 
+  // Top bar action buttons
+  bindTouchButton('btn-touch-home', 'menu');
+  bindTouchButton('btn-touch-camera', 'camera');
+
   // On foot action buttons
   bindTouchButton('btn-attack', 'attack');
   bindTouchButton('btn-jump', 'jump');
@@ -2074,8 +2080,8 @@ function installTouchControls() {
   // Driving controls
   bindTouchButton('btn-steer-left', 'steerLeft');
   bindTouchButton('btn-steer-right', 'steerRight');
-  bindTouchButton('btn-accelerate', 'forward');
-  bindTouchButton('btn-brake', 'reverse');
+  bindTouchButton('btn-pedal-gas', 'forward');
+  bindTouchButton('btn-pedal-brake', 'reverse');
   bindTouchButton('btn-handbrake', 'handbrake');
   bindTouchButton('btn-horn', 'horn');
   bindTouchButton('btn-exit-car', 'enterExit');
@@ -2083,10 +2089,10 @@ function installTouchControls() {
   // Contextual Drive-by controls
   bindTouchButton('btn-driveby-left', null, ['lookLeft', 'attack']);
   bindTouchButton('btn-driveby-right', null, ['lookRight', 'attack']);
+  bindTouchButton('btn-driveby-right-alt', null, ['lookRight', 'attack']);
 
   // Contextual Special Vehicle controls
   bindTouchButton('btn-sub-mission', 'job');
-  bindTouchButton('btn-turret-fire', 'attack');
 
   // Contextual Weapon Cycle Tap Zone (Top right HUD)
   const wpZone = document.getElementById('touch-weapon-cycle');

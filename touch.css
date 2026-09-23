@@ -1,6 +1,6 @@
 /* ==========================================================================
    OPEN GTA III — ORIGINAL 2011 10th ANNIVERSARY MOBILE CONTROL SYSTEM
-   Authentic recreation of GTA III mobile landscape touchscreen controls.
+   Exact 1:1 recreation matching the authentic GTA III mobile screenshots.
    ========================================================================== */
 
 :root {
@@ -9,24 +9,12 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  /* Authentic 2011 Mobile Proportions */
-  --btn-base-size: clamp(56px, 12vw, 76px);
-  --btn-large-size: clamp(66px, 14vw, 88px);
-  --pedal-width: clamp(52px, 11vw, 70px);
-  --pedal-height: clamp(80px, 16vw, 106px);
-  --steer-btn-width: clamp(60px, 13vw, 84px);
-  --steer-btn-height: clamp(64px, 13.5vw, 86px);
-  --joy-base-size: clamp(120px, 25vw, 160px);
-  --joy-knob-size: clamp(52px, 11vw, 68px);
-
-  /* Aesthetic Palette: Dark neutral semi-transparent surfaces with subtle borders */
-  --touch-bg-normal: rgba(14, 18, 26, 0.65);
-  --touch-bg-pressed: rgba(30, 41, 59, 0.85);
-  --touch-border-normal: rgba(255, 255, 255, 0.35);
-  --touch-border-pressed: rgba(255, 255, 255, 0.85);
-  --touch-accent-enter: rgba(234, 179, 8, 0.85);
-  --touch-accent-fire: rgba(239, 68, 68, 0.85);
-  --touch-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  /* Authentic 2011 Mobile Palette */
+  --touch-btn-bg: rgba(16, 22, 28, 0.45);
+  --touch-btn-border: rgba(255, 255, 255, 0.28);
+  --touch-btn-pressed: rgba(255, 255, 255, 0.2);
+  --touch-icon-color: rgba(255, 255, 255, 0.85);
+  --touch-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.15);
 }
 
 /* Strictly hide all mobile controls on desktop (when body does not have data-is-touch="1") */
@@ -73,7 +61,108 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
 }
 
 /* ==========================================================================
-   2. FLOATING / DYNAMIC MOVEMENT JOYSTICK ZONE (On-Foot Left Side)
+   2. TOP BAR ACTION BUTTONS (Home / Menu, Camera Toggle)
+   ========================================================================== */
+.btn-top-action {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--touch-btn-bg);
+  border: 1.5px solid var(--touch-btn-border);
+  box-shadow: var(--touch-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--touch-icon-color);
+  pointer-events: auto;
+  z-index: 40;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.08s ease;
+}
+
+.btn-top-action:active,
+.btn-top-action.pressed {
+  background: var(--touch-btn-pressed);
+  transform: scale(0.92);
+}
+
+.btn-top-action svg {
+  width: 60%;
+  height: 60%;
+  fill: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+
+/* Home button directly under Radar at top-left */
+#btn-touch-home {
+  left: calc(var(--safe-left) + 24px);
+  top: calc(var(--safe-top) + 128px);
+}
+
+/* Camera button beside Weapon HUD at top-right */
+#btn-touch-camera {
+  right: calc(var(--safe-right) + 130px);
+  top: calc(var(--safe-top) + 16px);
+}
+
+/* Weapon Quick-Cycle (Top Right HUD weapon tap target) */
+#touch-weapon-cycle {
+  position: absolute;
+  top: calc(var(--safe-top) + 8px);
+  right: calc(var(--safe-right) + 8px);
+  width: 108px;
+  height: 68px;
+  pointer-events: auto;
+  z-index: 40;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+#touch-weapon-cycle:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ==========================================================================
+   3. BASE TOUCH BUTTON STYLING
+   ========================================================================== */
+.touch-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--touch-btn-bg);
+  border: 2px solid var(--touch-btn-border);
+  box-shadow: var(--touch-shadow);
+  border-radius: 50%;
+  color: var(--touch-icon-color);
+  pointer-events: auto;
+  touch-action: none;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, background 0.08s ease, border-color 0.08s ease;
+  z-index: 30;
+}
+
+.touch-btn:active,
+.touch-btn.pressed {
+  background: var(--touch-btn-pressed);
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.touch-btn svg {
+  width: 58%;
+  height: 58%;
+  fill: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   4. MOVEMENT JOYSTICK (Left Side - On Foot)
    ========================================================================== */
 #touch-joystick-zone {
   position: absolute;
@@ -86,141 +175,91 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
   touch-action: none;
 }
 
-/* Floating joystick visual elements */
 .touch-floating-base {
   position: absolute;
-  width: var(--joy-base-size);
-  height: var(--joy-base-size);
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.75) 100%);
-  border: 2px solid var(--touch-border-normal);
+  background: radial-gradient(circle, rgba(16, 22, 28, 0.35) 0%, rgba(16, 22, 28, 0.55) 100%);
+  border: 2px solid var(--touch-btn-border);
   box-shadow: var(--touch-shadow);
   pointer-events: none;
   transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 0.15s ease-out;
+  opacity: 0.85;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.touch-floating-base.active {
-  opacity: 1;
+  /* Default rest position matching Image 2 */
+  left: calc(var(--safe-left) + 11.5%);
+  bottom: calc(var(--safe-bottom) + 19%);
+  top: auto;
 }
 
 .touch-floating-knob {
   position: absolute;
-  width: var(--joy-knob-size);
-  height: var(--joy-knob-size);
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, rgba(30, 41, 59, 0.9) 60%, rgba(15, 23, 42, 0.95) 100%);
-  border: 2px solid var(--touch-border-normal);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.3) 0%, rgba(25, 33, 42, 0.85) 60%, rgba(16, 22, 28, 0.95) 100%);
+  border: 2px solid var(--touch-btn-border);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7), inset 0 2px 3px rgba(255, 255, 255, 0.25);
   pointer-events: none;
   transform: translate(-50%, -50%);
   will-change: transform;
 }
 
-/* Directional arrows watermark on joystick base */
+/* Subtle outer ring on joystick base */
 .touch-floating-base::after {
   content: '';
   position: absolute;
-  inset: 18px;
+  inset: 12px;
   border-radius: 50%;
   border: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
 /* ==========================================================================
-   3. BASE TOUCH BUTTON STYLING
-   ========================================================================== */
-.touch-btn {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--touch-bg-normal);
-  border: 2px solid var(--touch-border-normal);
-  box-shadow: var(--touch-shadow);
-  border-radius: 50%;
-  color: #f8fafc;
-  pointer-events: auto;
-  touch-action: none;
-  outline: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.08s ease, background 0.08s ease, border-color 0.08s ease;
-  z-index: 30;
-}
-
-.touch-btn:active,
-.touch-btn.pressed {
-  background: var(--touch-bg-pressed);
-  border-color: var(--touch-border-pressed);
-  transform: scale(0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), inset 0 2px 6px rgba(0, 0, 0, 0.6);
-}
-
-.touch-btn svg {
-  width: 55%;
-  height: 55%;
-  fill: currentColor;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
-  pointer-events: none;
-}
-
-/* ==========================================================================
-   4. ON-FOOT CONTROL MODE (Right-Side Action Cluster)
+   5. ON-FOOT ACTION CLUSTER (Right Side - Exact Layout from Image 2)
    ========================================================================== */
 #touch-onfoot-cluster {
   position: absolute;
-  right: calc(var(--safe-right) + 16px);
-  bottom: calc(var(--safe-bottom) + 16px);
-  width: 240px;
-  height: 240px;
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 20px);
+  width: 180px;
+  height: 250px;
   pointer-events: none;
   z-index: 30;
 }
 
-/* Primary Attack / Shoot / Melee Button */
-#btn-attack {
-  right: 0;
-  bottom: 68px;
-  width: var(--btn-large-size);
-  height: var(--btn-large-size);
-  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.65) 0%, rgba(127, 29, 29, 0.8) 100%);
-  border-color: rgba(252, 165, 165, 0.5);
-}
-
-#btn-attack.pressed,
-#btn-attack:active {
-  background: radial-gradient(circle at 35% 35%, rgba(239, 68, 68, 0.85) 0%, rgba(153, 27, 27, 0.95) 100%);
-  border-color: #fff;
-}
-
-/* Jump Button */
+/* Jump Button: Bottom of vertical column */
 #btn-jump {
-  right: 88px;
-  bottom: 0;
-  width: var(--btn-base-size);
-  height: var(--btn-base-size);
-}
-
-/* Sprint Button */
-#btn-sprint {
   right: 0;
   bottom: 0;
-  width: var(--btn-base-size);
-  height: var(--btn-base-size);
+  width: 76px;
+  height: 76px;
 }
 
-/* Contextual Enter Vehicle Button (Only shown when Claude can enter nearby vehicle) */
+/* Sprint Button: Directly beside Jump (Horizontal pair) */
+#btn-sprint {
+  right: 86px;
+  bottom: 0;
+  width: 76px;
+  height: 76px;
+}
+
+/* Attack / Punch (Fist): Directly above Jump */
+#btn-attack {
+  right: 2px;
+  bottom: 86px;
+  width: 72px;
+  height: 72px;
+}
+
+/* Enter Car (Door): Directly above Attack */
 #btn-enter-car {
-  right: 88px;
-  bottom: 96px;
-  width: var(--btn-base-size);
-  height: var(--btn-base-size);
-  background: radial-gradient(circle at 35% 35%, rgba(202, 138, 4, 0.7) 0%, rgba(113, 63, 18, 0.85) 100%);
-  border-color: rgba(253, 224, 71, 0.6);
+  right: 6px;
+  bottom: 168px;
+  width: 64px;
+  height: 64px;
   opacity: 0;
   transform: scale(0.7);
   pointer-events: none;
@@ -235,31 +274,11 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
 
 #btn-enter-car.visible:active,
 #btn-enter-car.visible.pressed {
-  transform: scale(0.92);
-}
-
-/* Weapon Quick-Cycle (Top Right HUD weapon tap target) */
-#touch-weapon-cycle {
-  position: absolute;
-  top: calc(var(--safe-top) + 12px);
-  right: calc(var(--safe-right) + 12px);
-  width: 90px;
-  height: 60px;
-  pointer-events: auto;
-  z-index: 40;
-  cursor: pointer;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  transition: background 0.15s ease;
-}
-
-#touch-weapon-cycle:active {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(0.95);
 }
 
 /* ==========================================================================
-   5. DRIVING MODE (Steering Left & Pedals Right)
+   6. DRIVING MODE (Left Steering & Drive-By, Right Pedals & Actions - Image 1)
    ========================================================================== */
 #touch-driving-cluster {
   position: absolute;
@@ -268,142 +287,169 @@ body[data-state-cutscene="1"] .touch-controls-wrapper {
   z-index: 30;
 }
 
-/* Left-Side Steering Controls (A = Left, D = Right) */
+/* Left-Side Steering Controls (< and > side-by-side at bottom-left) */
 #touch-steering-group {
   position: absolute;
   left: calc(var(--safe-left) + 20px);
   bottom: calc(var(--safe-bottom) + 20px);
   display: flex;
-  gap: 14px;
+  gap: 12px;
   pointer-events: auto;
 }
 
 .btn-steer {
   position: relative;
-  width: var(--steer-btn-width);
-  height: var(--steer-btn-height);
-  border-radius: 16px;
-  background: var(--touch-bg-normal);
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
 }
 
-/* Right-Side Vehicle Action Cluster */
-#touch-driving-pedals {
+.btn-steer svg {
+  width: 65%;
+  height: 65%;
+}
+
+/* Left Drive-By Shoot Buttons (Directly above Steering) */
+#touch-driveby-group {
   position: absolute;
-  right: calc(var(--safe-right) + 20px);
-  bottom: calc(var(--safe-bottom) + 16px);
+  left: calc(var(--safe-left) + 26px);
+  bottom: calc(var(--safe-bottom) + 110px);
   display: flex;
-  align-items: flex-end;
   gap: 16px;
   pointer-events: auto;
 }
 
-/* Brake / Reverse Pedal */
-#btn-brake {
+.btn-driveby {
   position: relative;
-  width: var(--pedal-width);
-  height: calc(var(--pedal-height) * 0.88);
-  border-radius: 14px;
-  background: radial-gradient(circle at 50% 30%, rgba(220, 38, 38, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
 }
 
-/* Accelerate / Gas Pedal */
-#btn-accelerate {
-  position: relative;
-  width: var(--pedal-width);
-  height: var(--pedal-height);
-  border-radius: 14px;
-  background: radial-gradient(circle at 50% 30%, rgba(22, 163, 74, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
+.btn-driveby svg {
+  width: 62%;
+  height: 62%;
 }
 
-/* Upper Vehicle Action Row (Handbrake, Horn, Exit) */
+/* Right-Side Driving Actions & Pedals Container */
 #touch-driving-actions {
   position: absolute;
   right: calc(var(--safe-right) + 20px);
-  bottom: calc(var(--safe-bottom) + 130px);
-  display: flex;
-  gap: 14px;
-  pointer-events: auto;
-}
-
-.btn-veh-round {
-  position: relative;
-  width: var(--btn-base-size);
-  height: var(--btn-base-size);
-}
-
-#btn-exit-car {
-  background: radial-gradient(circle at 35% 35%, rgba(202, 138, 4, 0.7) 0%, rgba(113, 63, 18, 0.85) 100%);
-  border-color: rgba(253, 224, 71, 0.6);
-}
-
-/* ==========================================================================
-   6. DRIVE-BY MODE CONTROLS
-   ========================================================================== */
-#touch-driveby-group {
-  position: absolute;
-  right: calc(var(--safe-right) + 20px);
-  bottom: calc(var(--safe-bottom) + 204px);
-  display: flex;
-  gap: 14px;
-  pointer-events: auto;
-  opacity: 0;
+  bottom: calc(var(--safe-bottom) + 20px);
+  width: 185px;
+  height: 330px;
   pointer-events: none;
-  transform: translateY(12px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-#touch-driveby-group.visible {
-  opacity: 1;
+/* Accelerate / Gas Pedal (Bottom Far-Right) */
+#btn-pedal-gas {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 68px;
+  height: 114px;
+  border-radius: 16px;
   pointer-events: auto;
-  transform: translateY(0);
 }
 
-.btn-driveby {
-  position: relative;
-  width: calc(var(--btn-base-size) * 1.05);
-  height: calc(var(--btn-base-size) * 0.9);
-  border-radius: 14px;
-  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.7) 0%, rgba(30, 41, 59, 0.85) 100%);
-  border-color: rgba(248, 113, 113, 0.6);
+/* Brake / Reverse Pedal (Left of Gas Pedal) */
+#btn-pedal-brake {
+  position: absolute;
+  right: 80px;
+  bottom: 0;
+  width: 86px;
+  height: 66px;
+  border-radius: 12px;
+  pointer-events: auto;
 }
 
-/* ==========================================================================
-   7. SPECIAL VEHICLE (Turret / Firetruck / Taxi / Vigilante)
-   ========================================================================== */
+/* Pedal Dot Texture Grids (Matching Authentic Embossed Texture) */
+.pedal-grid-gas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 10px 8px;
+  padding: 10px 6px;
+  pointer-events: none;
+}
+
+.pedal-grid-brake {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 8px 8px;
+  padding: 6px 8px;
+  pointer-events: none;
+}
+
+.pedal-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(255, 255, 255, 0.2);
+  display: block;
+}
+
+/* Handbrake (Tire Skid Mark): Directly above Gas Pedal */
+#btn-handbrake {
+  position: absolute;
+  right: 0;
+  bottom: 128px;
+  width: 68px;
+  height: 68px;
+}
+
+/* Right Drive-By Shoot Alt: Directly above Brake Pedal */
+#btn-driveby-right-alt {
+  position: absolute;
+  right: 88px;
+  bottom: 78px;
+  width: 68px;
+  height: 68px;
+}
+
+/* Exit Car (Door): Directly above Handbrake */
+#btn-exit-car {
+  position: absolute;
+  right: 2px;
+  bottom: 206px;
+  width: 64px;
+  height: 64px;
+}
+
+/* Horn / Siren: Directly above Exit Car */
+#btn-horn {
+  position: absolute;
+  right: 6px;
+  bottom: 278px;
+  width: 56px;
+  height: 56px;
+}
+
+/* Special Vehicle (Taxi / Vigilante / Firefighter Sub-Mission) */
 #touch-special-group {
   position: absolute;
-  left: calc(var(--safe-left) + 20px);
-  bottom: calc(var(--safe-bottom) + 120px);
-  display: flex;
-  gap: 14px;
+  left: calc(var(--safe-left) + 26px);
+  bottom: calc(var(--safe-bottom) + 185px);
   pointer-events: auto;
 }
 
 #btn-sub-mission {
   position: relative;
-  width: var(--btn-base-size);
-  height: var(--btn-base-size);
-}
-
-#btn-turret-fire {
-  position: absolute;
-  right: calc(var(--safe-right) + 20px);
-  bottom: calc(var(--safe-bottom) + 130px);
-  width: var(--btn-large-size);
-  height: var(--btn-large-size);
-  background: radial-gradient(circle at 35% 35%, rgba(220, 38, 38, 0.75) 0%, rgba(127, 29, 29, 0.9) 100%);
-  border-color: rgba(252, 165, 165, 0.7);
-  pointer-events: auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
 }
 
 /* ==========================================================================
-   8. STATE-DRIVEN DISPLAY TOGGLES
+   7. STATE-DRIVEN DISPLAY TOGGLES
    ========================================================================== */
-/* Default all contextual clusters to hidden */
 #touch-joystick-zone,
 #touch-onfoot-cluster,
 #touch-driving-cluster,
 #touch-driveby-group,
+#btn-driveby-right-alt,
 #touch-special-group {
   display: none;
 }
@@ -417,11 +463,7 @@ body[data-touch-state="on_foot" i] #touch-onfoot-cluster,
 }
 
 body[data-touch-state="on_foot" i] #touch-driving-cluster,
-body[data-touch-state="on_foot" i] #touch-driveby-group,
-body[data-touch-state="on_foot" i] #btn-turret-fire,
-#touch-controls[data-touch-state="on_foot" i] #touch-driving-cluster,
-#touch-controls[data-touch-state="on_foot" i] #touch-driveby-group,
-#touch-controls[data-touch-state="on_foot" i] #btn-turret-fire {
+#touch-controls[data-touch-state="on_foot" i] #touch-driving-cluster {
   display: none !important;
 }
 
@@ -438,39 +480,27 @@ body[data-touch-state="driving" i] #touch-driving-cluster,
   display: block !important;
 }
 
-/* Drive-By State */
-body[data-touch-state="drive_by" i] #touch-joystick-zone,
-body[data-touch-state="drive_by" i] #touch-onfoot-cluster,
-#touch-controls[data-touch-state="drive_by" i] #touch-joystick-zone,
-#touch-controls[data-touch-state="drive_by" i] #touch-onfoot-cluster {
-  display: none !important;
-}
-
-body[data-touch-state="drive_by" i] #touch-driving-cluster,
-#touch-controls[data-touch-state="drive_by" i] #touch-driving-cluster {
-  display: block !important;
-}
-
+/* Drive-By in Vehicle (Equipped weapon) */
 body[data-touch-state="drive_by" i] #touch-driveby-group,
-#touch-controls[data-touch-state="drive_by" i] #touch-driveby-group {
+body[data-touch-state="drive_by" i] #btn-driveby-right-alt,
+#touch-controls[data-touch-state="drive_by" i] #touch-driveby-group,
+#touch-controls[data-touch-state="drive_by" i] #btn-driveby-right-alt {
+  display: flex !important;
+}
+
+/* Also show driveby controls when in car with driveby flag (data-state-car-gun="1") */
+body[data-state-car-gun="1"] #touch-driveby-group,
+body[data-state-car-gun="1"] #btn-driveby-right-alt,
+#touch-controls[data-state-car-gun="1"] #touch-driveby-group,
+#touch-controls[data-state-car-gun="1"] #btn-driveby-right-alt {
   display: flex !important;
 }
 
 /* Special Vehicle State */
-body[data-touch-state="special_vehicle" i] #touch-joystick-zone,
-body[data-touch-state="special_vehicle" i] #touch-onfoot-cluster,
-#touch-controls[data-touch-state="special_vehicle" i] #touch-joystick-zone,
-#touch-controls[data-touch-state="special_vehicle" i] #touch-onfoot-cluster {
-  display: none !important;
-}
-
-body[data-touch-state="special_vehicle" i] #touch-driving-cluster,
-#touch-controls[data-touch-state="special_vehicle" i] #touch-driving-cluster {
-  display: block !important;
-}
-
 body[data-touch-state="special_vehicle" i] #touch-special-group,
-#touch-controls[data-touch-state="special_vehicle" i] #touch-special-group {
+#touch-controls[data-touch-state="special_vehicle" i] #touch-special-group,
+body[data-state-job="1"] #touch-special-group,
+#touch-controls[data-state-job="1"] #touch-special-group {
   display: flex !important;
 }
 
@@ -481,7 +511,7 @@ body[data-touch-state="menu" i] .touch-controls-wrapper,
 }
 
 /* ==========================================================================
-   9. PORTRAIT ORIENTATION WARNING
+   8. PORTRAIT ORIENTATION WARNING
    ========================================================================== */
 #touch-portrait-warning {
   position: fixed;
@@ -531,7 +561,7 @@ body[data-touch-state="menu" i] .touch-controls-wrapper,
 }
 
 /* ==========================================================================
-   10. DEVELOPER DEBUG HUD (?touchdebug=1)
+   9. DEVELOPER DEBUG HUD (?touchdebug=1)
    ========================================================================== */
 #touch-debug-hud {
   position: fixed;
