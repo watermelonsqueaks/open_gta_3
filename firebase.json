@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "site": "classroom-gta3",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".github/**",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
