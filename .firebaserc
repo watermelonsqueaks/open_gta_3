@@ -1,9 +1,9 @@
 {
   "projects": {
-    "default": "moto-x3-spooky-land"
+    "default": "moto-x3m-spooky-land"
   },
   "targets": {
-    "moto-x3-spooky-land": {
+    "moto-x3m-spooky-land": {
       "hosting": {
         "gta3": [
           "classroom-gta3"
