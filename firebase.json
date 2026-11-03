@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "classroom-gta3",
+    "target": "gta3",
     "public": ".",
     "ignore": [
       "firebase.json",
